@@ -11,14 +11,14 @@ __pycache__/
 build/
 develop-eggs/
 dist/
-downloads/
-eggs/
+/downloads/
+/eggs/
 .eggs/
-lib/
-lib64/
-parts/
+/lib/
+/lib64/
+/parts/
 sdist/
-var/
+/var/
 wheels/
 share/python-wheels/
 *.egg-info/
@@ -62,7 +62,7 @@ db.sqlite3
 db.sqlite3-journal
 
 # Flask stuff:
-instance/
+/instance/
 .webassets-cache
 
 # Scrapy stuff:
@@ -73,7 +73,7 @@ docs/_build/
 
 # PyBuilder
 .pybuilder/
-target/
+/target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -216,3 +216,30 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Node
+node_modules/
+*.tsbuildinfo
+npm-debug.log*
+.npm/
+
+# Ingesta de tarifas: tablas maestras generadas y archivos de trabajo.
+# Se regeneran con `npm run transformar-tarifas`.
+/input/
+output/
+/tabla_maestra.json
+test/fixtures/out/
+test/fixtures/perfilar-out.txt
+
+# Compilado de Firebase Functions (el codigo fuente va en apps/functions/src/,
+# incluida apps/functions/src/lib/).
+apps/functions/lib/
+
+# Excel de transportes REALES: contienen tarifas comerciales y nunca van al
+# repositorio, esten donde esten.
+*.xlsx
+*.xls
+*.xlsm
+# Excepcion: fixtures SINTETICOS, regenerables con `npm run fixtures`.
+!test/fixtures/input/*.xlsx
+!test/fixtures/bad/*.xlsx

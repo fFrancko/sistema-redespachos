@@ -1,0 +1,28 @@
+{
+  "name": "sistema-redespachos",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tooling compartido del monorepo: scripts de ingesta y transformacion de tarifas.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "transformar-tarifas": "tsx packages/shared/scripts/transformar-tarifas.ts",
+    "fixtures": "tsx test/fixtures/generar-fixtures.ts && tsx test/fixtures/bad-gen.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/transformar.test.ts"
+  },
+  "dependencies": {
+    "decimal.js": "^10.4.3",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
