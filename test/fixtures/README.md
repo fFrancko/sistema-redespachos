@@ -103,6 +103,50 @@ npx tsx test/fixtures/verificar.ts test/fixtures/output/tabla_maestra.json
 npx tsx test/fixtures/verificar.ts salida.json --tarifas="<tarifas.xlsx>" --hoja-peso="HOJA PESO"
 ```
 
+`analizar.ts` — análisis de negocio sobre una tabla maestra: distribución de
+precios por zona, cantidad de tramos, huecos y solapamientos entre rangos, y si
+los precios crecen de forma monótona con el peso. Es la herramienta para
+detectar errores en el tarifario del transporte (un precio que baja al
+aumentar el peso, un tramo que no cierra).
+
+```bash
+npx tsx test/fixtures/analizar.ts ./output/tabla.json "Nombre proveedor"
+```
+
+`ver-excel.ts` — vuelca un Excel generado a la consola, para revisarlo sin
+abrirlo o para comparar dos salidas.
+
+```bash
+npx tsx test/fixtures/ver-excel.ts ./output/tarifa_por_proveedor.xlsx 20
+```
+
+## Exportar a Excel
+
+`packages/shared/scripts/exportar-excel.ts` convierte una o más tablas maestras
+en un libro de Excel con filtro y anchos de columna, pensado para que
+operaciones y comercial revisen precios sin escribir consultas.
+
+```bash
+npm run exportar-excel -- --tabla=./output/hacha.json --output=./output/tarifa.xlsx
+```
+
+Varias tablas en el mismo libro produce una hoja `Tarifa por proveedor` con una
+columna por transporte, que es la vista de comparación entre proveedores:
+
+```bash
+npm run exportar-excel -- \
+  --tabla=./output/expreso_alfa.json --tabla=./output/hacha.json \
+  --output=./output/tarifa_por_proveedor.xlsx
+```
+
+Hojas generadas: `Resumen` (origen, conteos, resolución de zonas, descartadas,
+avisos), `Tarifa por proveedor`, una matriz `PESO`/`VOLUMEN` por proveedor con
+una columna por zona, y `Reglas` con los importes como texto decimal exacto para
+auditar contra el JSON.
+
+En las hojas de precios los importes se escriben como número para que se puedan
+sumar y ordenar; en la hoja `Reglas` van como texto, igual que en el JSON.
+
 ## Formatos de tarifario soportados
 
 El transformador maneja el formato de Hacha de Piedra y el de los fixtures

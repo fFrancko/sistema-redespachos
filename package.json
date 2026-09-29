@@ -9,6 +9,8 @@
   },
   "scripts": {
     "transformar-tarifas": "tsx packages/shared/scripts/transformar-tarifas.ts",
+    "exportar-excel": "tsx packages/shared/scripts/exportar-excel.ts",
+    "analizar": "tsx test/fixtures/analizar.ts",
     "fixtures": "tsx test/fixtures/generar-fixtures.ts && tsx test/fixtures/bad-gen.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/transformar.test.ts"
