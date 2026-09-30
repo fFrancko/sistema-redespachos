@@ -385,6 +385,7 @@ const RE_NUMERO = String.raw`\d+(?:[.,]\d+)?`;
  */
 export interface RangoParseado extends RangoTarifa {
   soloTope: boolean;
+  inferirTopeAnterior?: boolean;
 }
 
 export function parsearRango(celda: unknown, contexto: string[]): RangoParseado {
@@ -410,9 +411,27 @@ export function parsearRango(celda: unknown, contexto: string[]): RangoParseado 
     throw new ErrorIngesta(`Rango ilegible: "${original}".`, contexto);
   }
 
-  // 2) Excedentes: "mas de 100", ">100", "100 o mas", "100+", "100 a mas".
-  const esMas = /^(?:>|mas\s+de|desde)\s*(.+)$/.exec(s);
-  const esMasSufijo = /^(.+?)\s*(?:o\s*mas|a\s*mas|y\s*mas|\+)$/.exec(s);
+  // 2) Excedentes semánticos sin número explícito:
+  // "kg excedente", "m3 excedente", "kilo adicional", "excedente", "adicional", "extra", "por kg excedente"
+  const sSinPrefijos = s
+    .replace(/^(?:por\s+|cada\s+|por\s+cada\s+)+/g, '')
+    .replace(/[.,:;]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (/^(?:excedente|adicional|extra|adicionales|excedentes|extras)$/.test(sSinPrefijos)) {
+    return {
+      min: '0',
+      max: '0',
+      esExcedente: true,
+      soloTope: false,
+      inferirTopeAnterior: true,
+    };
+  }
+
+  // 3) Excedentes con número explícito: "mas de 100", ">100", "100 o mas", "100+", "100 a mas", "excedente 100".
+  const esMas = /^(?:>|mas\s+de|desde|excedente(?:\s+de)?|adicional(?:\s+de)?)\s*(.+)$/.exec(s);
+  const esMasSufijo = /^(.+?)\s*(?:o\s*mas|a\s*mas|y\s*mas|\+|excedente|adicional)$/.exec(s);
   if (esMas || esMasSufijo) {
     const capturado = (esMas?.[1] ?? esMasSufijo?.[1] ?? '').trim();
     const limite = primerNumero(capturado);
@@ -811,6 +830,7 @@ interface FilaCobertura {
   localidadOrigen: string;
   provinciaDestino: string;
   localidadDestino: string;
+  codigoPostal?: string;
   claveZona: string;
   etiquetaZona: string;
 }
@@ -819,6 +839,8 @@ export interface FilaRango {
   rango: RangoTarifa;
   /** El texto del rango solo informa un tope ("hasta 50"): su min no es dato. */
   soloTope: boolean;
+  /** Si es true, el umbral del excedente debe tomarse del tope de la fila anterior. */
+  inferirTopeAnterior?: boolean;
   /** Fila de datos (1-based) para los mensajes de error. */
   numeroFila: number;
   etiqueta: string;
@@ -881,6 +903,15 @@ function leerCobertura(ruta: string, hoja: string | undefined): CoberturaLeida {
     ['destino localidad', 'localidad destino'],
     [],
   );
+  const iCp = indiceColumnaOpcional(nombres, [
+    'codigo postal',
+    'codigo_postal',
+    'cp',
+    'c.p.',
+    'c.p',
+    'cod postal',
+    'cod. postal',
+  ]);
   const iZona = indiceColumna(
     nombres,
     ['zona facturacion', 'zona de facturacion', 'zona'],
@@ -922,6 +953,10 @@ function leerCobertura(ruta: string, hoja: string | undefined): CoberturaLeida {
       localidadOrigen = partes.length > 1 ? partes.slice(1).join(' / ') : '*';
     }
 
+    const cpCrudo = iCp !== -1 ? fila[iCp] : undefined;
+    const codigoPostal =
+      esVacia(cpCrudo) ? undefined : String(cpCrudo).replace(/\s+/g, ' ').trim();
+
     // La zona puede venir vacía o ser un marcador tipo "-" en transportes que
     // no tarifan desde el mismo origen. No es un error: esas filas se
     // descartan y se informan aparte.
@@ -940,6 +975,7 @@ function leerCobertura(ruta: string, hoja: string | undefined): CoberturaLeida {
       localidadOrigen,
       provinciaDestino,
       localidadDestino,
+      ...(codigoPostal !== undefined ? { codigoPostal } : {}),
       claveZona: clave,
       etiquetaZona: etiquetaZona(clave),
     });
@@ -1055,10 +1091,13 @@ function leerTarifario(
   }> = [];
   const crudos = crudosEncabezado;
   nombres.forEach((nombre, indice) => {
-    if (indice === iRango || nombre === '') return;
-    const clave = claveZona(nombre);
+    if (indice === iRango) return;
+    // Algunos tarifarios nombran las zonas con numeros ("1", "2", "3"), que
+    // `normalizarEncabezado` descarta por no ser texto. Para las columnas de
+    // zona se usa el valor crudo de la celda, que si es utilizable.
+    const cruda = String(crudos[indice] ?? '').replace(/\s+/g, ' ').trim();
+    const clave = claveZona(cruda === '' ? nombre : cruda);
     if (clave === null) return;
-    const cruda = String(crudos[indice] ?? nombre).replace(/\s+/g, ' ').trim();
     columnasZona.push({ indice, clave, etiqueta: etiquetaZona(clave, cruda), cruda });
   });
 
@@ -1108,10 +1147,11 @@ function leerTarifario(
       );
     }
 
-    const { soloTope, ...rangoBase } = rango;
+    const { soloTope, inferirTopeAnterior, ...rangoBase } = rango;
     salida.push({
       rango: rangoBase,
       soloTope,
+      ...(inferirTopeAnterior !== undefined ? { inferirTopeAnterior } : {}),
       numeroFila: n,
       etiqueta: String(rangoCrudo),
       precios,
@@ -1175,12 +1215,34 @@ export function encadenarRangos(
 
     if (rango.esExcedente) {
       hayExcedente = true;
-      if (!new Decimal(rango.min).equals(tope)) {
+      if (fila.inferirTopeAnterior) {
+        if (tope.isZero()) {
+          throw new ErrorIngesta(
+            `El excedente "${fila.etiqueta}" no puede ser la primera fila del tarifario.`,
+            ctx,
+          );
+        }
+        rango.min = decimalAString(tope);
+        rango.max = decimalAString(tope);
+      } else if (!new Decimal(rango.min).equals(tope)) {
         advertencias.push(
           `${tipo}: el excedente "${fila.etiqueta}" empieza en ${rango.min} pero el ` +
             `rango anterior termina en ${tope.toString()} (fila ${fila.numeroFila}).`,
         );
       }
+
+      // Advertencia si la unidad del texto no coincide con el tipo de hoja
+      const etiquetaNorm = normTexto(fila.etiqueta);
+      if (tipo === 'PESO' && /\bm3\b|\bmetros?\s*cubicos?\b/.test(etiquetaNorm)) {
+        advertencias.push(
+          `PESO: la fila de excedente "${fila.etiqueta}" menciona m3 en una hoja de peso (fila ${fila.numeroFila}).`,
+        );
+      } else if (tipo === 'VOLUMEN' && /\bkgs?\b|\bkilos?\b/.test(etiquetaNorm)) {
+        advertencias.push(
+          `VOLUMEN: la fila de excedente "${fila.etiqueta}" menciona kg en una hoja de volumen (fila ${fila.numeroFila}).`,
+        );
+      }
+
       continue;
     }
 
@@ -1351,6 +1413,12 @@ function transformar(
         localidad_origen: origen.localidadOrigen,
         provincia_destino: origen.provinciaDestino,
         localidad_destino: origen.localidadDestino,
+        ...(origen.codigoPostal !== undefined
+          ? {
+              codigo_postal: origen.codigoPostal,
+              codigo_postal_destino: origen.codigoPostal,
+            }
+          : {}),
         zona_destino: etiquetaDeClave.get(clave) ?? etiquetaZona(clave),
         costo_base_viaje: costoBaseStr,
         aplica_colecta: false,
@@ -1367,10 +1435,8 @@ function transformar(
             : { precio_m3_base: decimalAString(precio) }),
       };
 
-      // Deduplicacion por contenido: el tarifario no tiene codigo postal ni
-      // tiempo de entrega (no son parte de ReglaTarifa), asi que varias
-      // filas de cobertura pueden colapsar al mismo documento. Sin esto,
-      // una misma ruta con 5 CP generaria 5 documentos identicos.
+      // Deduplicacion por contenido: dos filas con la misma ruta, CP y zona
+      // colapsan en el mismo documento.
       const huella = JSON.stringify(base);
       if (vistas.has(huella)) {
         duplicadosEliminados += 1;

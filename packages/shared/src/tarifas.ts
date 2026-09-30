@@ -34,6 +34,10 @@ export interface ReglaTarifa {
   localidad_origen: string;
   provincia_destino: string;
   localidad_destino: string;
+  /** Código postal de destino (cuando la cobertura lo especifica). */
+  codigo_postal?: string;
+  /** Alias opcional de `codigo_postal`. */
+  codigo_postal_destino?: string;
   /** Etiqueta canónica de zona, p. ej. `'Zona facturación 2'`. */
   zona_destino: string;
 

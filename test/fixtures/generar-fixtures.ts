@@ -17,8 +17,8 @@ const cobertura = [
   ['Buenos Aires / Palermo', 'Cordoba', 'Cordoba Capital', '5000', 'Zona Facturacion 1', '24hs'],
   ['Buenos Aires / Palermo', 'Cordoba', 'Villa Carlos Paz', '5152', 'Zona Facturacion 2', '48hs'],
   ['Buenos Aires / Palermo', 'Cordoba', 'Rio Cuarto', '5800', 'Zona Facturacion 3', '72hs'],
-  // Misma ruta repetida con otro CP: debe colapsar en el mismo documento.
-  ['Buenos Aires / Palermo', 'Cordoba', 'Rio Cuarto', '5801', 'Zona Facturacion 3', '72hs'],
+  // Misma ruta repetida con mismo CP: debe colapsar en el mismo documento.
+  ['Buenos Aires / Palermo', 'Cordoba', 'Rio Cuarto', '5800', 'Zona Facturacion 3', '72hs'],
   ['CABA / Once', 'Santa Fe', 'Rosario', '2000', 'Zona Facturacion 1', '24hs'],
   ['CABA / Once', 'Santa Fe', 'Rosario', '2000', 'Zona Facturacion 4', '24hs'],
   // Origen solo con provincia -> localidad_origen = "*"

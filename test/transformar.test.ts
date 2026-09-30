@@ -77,8 +77,15 @@ describe('parsearRango', () => {
   it('tope', () => {
     assert.deepEqual(parsearRango('Hasta 20', []), { min: '0', max: '20', esExcedente: false, soloTope: true });
   });
-  it('excedente', () => {
+  it('excedente con operador', () => {
     assert.deepEqual(parsearRango('> 50 kg', []), { min: '50', max: '50', esExcedente: true, soloTope: false });
+  });
+  it('excedente semántico sin número (kg, m3, adicional)', () => {
+    assert.deepEqual(parsearRango('kg excedente', []), { min: '0', max: '0', esExcedente: true, soloTope: false, inferirTopeAnterior: true });
+    assert.deepEqual(parsearRango('m3 excedente', []), { min: '0', max: '0', esExcedente: true, soloTope: false, inferirTopeAnterior: true });
+    assert.deepEqual(parsearRango('kilo adicional', []), { min: '0', max: '0', esExcedente: true, soloTope: false, inferirTopeAnterior: true });
+    assert.deepEqual(parsearRango('por cada kg excedente', []), { min: '0', max: '0', esExcedente: true, soloTope: false, inferirTopeAnterior: true });
+    assert.deepEqual(parsearRango('excedente', []), { min: '0', max: '0', esExcedente: true, soloTope: false, inferirTopeAnterior: true });
   });
   it('rango invertido', () => {
     assert.throws(() => parsearRango('100 a 50 kg', []), ErrorIngesta);
@@ -151,8 +158,15 @@ describe('resolverZonas', () => {
 // ---------------------------------------------------------------------------
 describe('encadenarRangos  ->  (min, max]', () => {
   const fila = (texto: string, n: number): FilaRango => {
-    const { soloTope, ...rango } = parsearRango(texto, []);
-    return { rango, soloTope, numeroFila: n, etiqueta: texto, precios: new Map() };
+    const { soloTope, inferirTopeAnterior, ...rango } = parsearRango(texto, []);
+    return {
+      rango,
+      soloTope,
+      ...(inferirTopeAnterior !== undefined ? { inferirTopeAnterior } : {}),
+      numeroFila: n,
+      etiqueta: texto,
+      precios: new Map(),
+    };
   };
   const armar = (textos: string[]) => textos.map((t, i) => fila(t, i + 1));
   const salida = (filas: FilaRango[]) => filas.map((f) => `${f.rango.min}-${f.rango.max}${f.rango.esExcedente ? '+' : ''}`);
@@ -161,6 +175,26 @@ describe('encadenarRangos  ->  (min, max]', () => {
     const f = armar(['Hasta 10', 'Hasta 20', 'Hasta 50']);
     encadenarRangos(f, true, 'PESO', 't', []);
     assert.deepEqual(salida(f), ['0-10', '10-20', '20-50']);
+  });
+  it('excedente semántico sin número hereda tope anterior (kg)', () => {
+    const f = armar(['Hasta 10', 'Hasta 20', 'kg excedente']);
+    encadenarRangos(f, true, 'PESO', 't', []);
+    assert.deepEqual(salida(f), ['0-10', '10-20', '20-20+']);
+  });
+  it('excedente semántico sin número hereda tope anterior (m3)', () => {
+    const f = armar(['0 a 0.5 m3', '0.5 a 1 m3', 'm3 excedente']);
+    encadenarRangos(f, false, 'VOLUMEN', 't', []);
+    assert.deepEqual(salida(f), ['0-0.5', '0.5-1', '1-1+']);
+  });
+  it('excedente como primera fila arroja error', () => {
+    assert.throws(() => encadenarRangos(armar(['kg excedente']), false, 'PESO', 't', []), ErrorIngesta);
+  });
+  it('inconsistencia de unidad genera advertencia', () => {
+    const f = armar(['Hasta 10', 'm3 excedente']);
+    const av: string[] = [];
+    encadenarRangos(f, true, 'PESO', 't', av);
+    assert.equal(av.length, 1);
+    assert.match(av[0]!, /menciona m3 en una hoja de peso/);
   });
   it('intervalos contiguos se respetan', () => {
     const f = armar(['0 a 10 kg', '10 a 25 kg', '25 a 50 kg', '> 50 kg']);
@@ -223,6 +257,9 @@ describe('CLI contra fixtures', () => {
     for (const x of reglas) for (const [k, v] of Object.entries(x)) {
       if (/^(kg|m3|precio|costo)/.test(k)) assert.equal(typeof v, 'string', k);
     }
+    const cordoba = reglas.find((x) => x.localidad_destino === 'Cordoba Capital');
+    assert.equal(cordoba?.codigo_postal, '5000');
+    assert.equal(cordoba?.codigo_postal_destino, '5000');
   });
 
   it('--estricto falla por la zona sin tarifa', () => {
