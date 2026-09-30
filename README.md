@@ -1,35 +1,66 @@
-# sistema-redespachos
+# Sistema de Redespachos
 
-Aplicativo web para identificar, gestionar, valorizar y liquidar pedidos con
-redespacho (expresos). Este repositorio es un monorepo (`apps/`, `packages/`).
+Aplicativo web interna de QX para cotizar, valorizar, confirmar con el proveedor y liquidar pedidos de redespacho, cruzando el canalizador de CPs con los tarifarios de costos de los expresos.
+
+## Stack
+
+- **Lenguaje:** TypeScript (de punta a punta)
+- **Monorepo:** pnpm workspaces
+- **Frontend:** React + Vite
+- **Backend:** Firebase Cloud Functions 2ª gen
+- **Base de datos:** Firestore (nativo)
+- **Tests:** Vitest
+- **Autenticación:** Firebase Auth con Google Workspace
+
+## Estructura
+
+```
+├── apps/
+│   ├── web/              # SPA React + Vite
+│   └── functions/        # Firebase Cloud Functions
+├── packages/
+│   ├── shared/           # Tipos y esquemas Zod (fuente única)
+│   └── motor/            # Lógica de cotización (puro, sin I/O)
+└── docs/                 # Arquitectura y documentación
+```
 
 ## Requisitos
 
 Node 20 o superior.
 
 ```bash
-npm install
+pnpm install
 ```
 
-## Comandos
+## Scripts
 
-| Comando | Qué hace |
-| --- | --- |
-| `npm run transformar-tarifas -- <opciones>` | Cruza Cobertura + Tarifario de un expreso y genera la tabla maestra `reglas_tarifa` (ver `--help`). |
-| `npm run fixtures` | Regenera los Excel sintéticos de `test/fixtures/`. |
-| `npm test` | Tests unitarios y de punta a punta del transformador. |
-| `npm run typecheck` | Chequeo de tipos de todo el repo. |
+```bash
+# Desarrollo
+pnpm dev              # Lanza la web en http://localhost:5173
 
-## Convención de rangos de tarifa
+# Verificación
+pnpm typecheck        # TypeScript sin emitir
+pnpm test             # Vitest en todos los workspaces
+pnpm lint             # ESLint
+pnpm format           # Prettier
 
-Los rangos de peso y volumen son intervalos `(min, max]`: `min` exclusivo y
-`max` inclusivo (`(0;10]`, `(10;25]`). Un valor exacto pertenece a un único
-rango. Las filas de excedente (`> 50`) llevan `min = max = límite` y aplican a
-todo lo que supere ese límite. Detalle en `packages/shared/src/tarifas.ts`.
+# Build
+pnpm build            # Compila todos los packages/apps
+```
 
-## Datos de transportes reales
+## Convenciones
 
-Los Excel reales de los expresos **no se suben al repositorio** (`*.xlsx` está
-en el `.gitignore`). Solo se versionan los fixtures sintéticos de
-`test/fixtures/input/` y `test/fixtures/bad/`. Más en
-[`test/fixtures/README.md`](test/fixtures/README.md).
+- **Campos de dominio:** español `snake_case` (`peso_kgs`, `id_proveedor`)
+- **Funciones/módulos:** inglés `camelCase`
+- **Dinero:** decimal en string (tarifas, hasta 4 decimales) o centavos enteros (resultados)
+- **Cálculos:** `decimal.js` (nunca `number` flotante para montos)
+- **Tipos:** un solo esquema Zod en `packages/shared`, usado por web, functions y motor
+
+## Carriles
+
+- **Carril A (Cotización):** motor, functions de tarifas y órdenes, UI de cotización
+- **Carril B (Plataforma):** auth, usuarios, proveedores, proformas, liquidación, OC
+
+## Documentación
+
+Ver [`docs/arquitectura-v3.md`](docs/arquitectura-v3.md) para el diseño completo, modelos de datos y decisiones cerradas.
