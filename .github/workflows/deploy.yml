@@ -48,11 +48,26 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Check deploy secrets
+        id: secrets
+        env:
+          WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          SA_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+        run: |
+          if [ -n "$WIF_PROVIDER" ] && [ -n "$SA_EMAIL" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Deploy omitido::Faltan GCP_WORKLOAD_IDENTITY_PROVIDER o GCP_SERVICE_ACCOUNT_EMAIL. Ver docs/CI.md."
+          fi
+
       - name: Authenticate to Google Cloud
+        if: steps.secrets.outputs.ready == 'true'
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
 
       - name: Deploy Hosting and Functions
+        if: steps.secrets.outputs.ready == 'true'
         run: pnpm exec firebase deploy --project proyecto-qx-dev --only hosting,functions --non-interactive

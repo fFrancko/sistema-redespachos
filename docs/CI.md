@@ -62,7 +62,7 @@ No despliega reglas de Firestore ni Storage; esas se despliegan a mano (MVP-02 /
 1. **Secrets de GitHub sin cargar.** El deploy requiere:
    - `GCP_WORKLOAD_IDENTITY_PROVIDER`: proveedor de Workload Identity Federation (`projects/<n>/locations/global/workloadIdentityPools/<pool>/providers/<provider>`).
    - `GCP_SERVICE_ACCOUNT_EMAIL`: service account con permisos de deploy de Hosting y Functions en `proyecto-qx-dev`.
-   Hasta que se carguen, el paso de autenticación falla. Nunca van en el repo.
+   Mientras falten, el workflow corre lint, typecheck, test y build, **omite** autenticación y deploy, y deja un warning "Deploy omitido" en el run (queda en verde). Nunca van en el repo.
 2. **Target de Hosting sin mapear.** `firebase.json` declara `"target": "web"`, pero en `.firebaserc` `targets` está vacío. Hay que mapearlo (`firebase target:apply hosting web <site-id> --project proyecto-qx-dev`) en el ticket de Firebase. MVP-03 no puede tocar esos archivos.
 
 ## Fuera de alcance (deuda)
