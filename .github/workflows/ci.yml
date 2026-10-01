@@ -34,50 +34,17 @@ jobs:
           node-version: 22.x
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec firebase emulators:exec --project proyecto-qx-dev "pnpm test --coverage"
+      - name: Run tests with coverage (per workspace)
+        run: pnpm exec firebase emulators:exec --project proyecto-qx-dev "pnpm --filter @sistema-redespachos/web test --coverage && pnpm --filter @sistema-redespachos/motor test --coverage"
         env:
           CI: "true"
-      - name: Comment PR with test results
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          script: |
-            const fs = require('fs');
-            const coverage = JSON.parse(fs.readFileSync('coverage/coverage-final.json', 'utf8'));
-            const entries = Object.values(coverage).filter(f => f.type === 'module');
-
-            if (entries.length === 0) {
-              console.log('No coverage data found.');
-              return;
-            }
-
-            const stats = entries.reduce((acc, file) => ({
-              lines: acc.lines + (file.l ? Object.values(file.l).filter(c => c !== null).length : 0),
-              linesMissed: acc.linesMissed + (file.l ? Object.values(file.l).filter(c => c === 0).length : 0),
-              branches: acc.branches + (file.b ? Object.values(file.b).length : 0),
-              functions: acc.functions + (file.f ? Object.values(file.f).length : 0),
-            }), { lines: 0, linesMissed: 0, branches: 0, functions: 0 });
-
-            const linesCovered = stats.lines - stats.linesMissed;
-            const linesPct = stats.lines > 0 ? ((linesCovered / stats.lines) * 100).toFixed(2) : 0;
-
-            const comment = `
-            ## ✅ Tests Passed
-
-            **Coverage Summary:**
-            - Lines: ${linesPct}% (${linesCovered}/${stats.lines})
-            - Branches: ${stats.branches}
-            - Functions: ${stats.functions}
-
-            See full coverage report: [coverage/index.html](coverage/index.html)
-            `;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment,
-            });
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
 
   build:
     runs-on: ubuntu-latest
