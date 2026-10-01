@@ -14,7 +14,7 @@
     "build": "pnpm -r build",
     "dev": "pnpm -C apps/web dev",
     "dev:emulator": "firebase emulators:start",
-    "lint": "eslint apps/web/src apps/functions packages --max-warnings 0",
+    "lint": "eslint apps/web/src apps/functions packages --ignore-pattern \"**/coverage/**\" --max-warnings 0",
     "format": "prettier --write .",
     "ci:run": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
