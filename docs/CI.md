@@ -1,120 +1,47 @@
-# CI/CD Pipeline
 
-## Overview
+# CI/CD (Integración y Despliegue Continuo)
 
-El sistema de Redespachos usa GitHub Actions para ejecutar verificaciones automáticas en cada PR y despliegue continuo a dev en cada merge a `main`.
+## Flujo de Pull Request (CI)
 
-## Flujo de CI en Pull Request
+El workflow `.github/workflows/ci.yml` se dispara con cada Pull Request abierto hacia la rama `main`.
 
-### Checks automáticos (obligatorios para merge)
+### Pasos del Job `validate`:
 
-Cuando abres una PR, se ejecutan estos checks **en paralelo** (con dependencias):
+1.  **Checkout & Setup:** Configura el entorno con Node.js 22.x y pnpm 9.x.
+2.  **Verificación Estática:** Ejecuta `pnpm lint`, `pnpm typecheck` y `pnpm build`.
+3.  **Tests con Emuladores:** Lanza los emuladores de Firebase necesarios y ejecuta `pnpm test --coverage`.
+4.  **Comentario de Coverage:** Publica un comentario en la PR con el resumen de la cobertura de tests.
+5.  **Deploy a Preview Channel:** Despliega la aplicación web a un canal de preview temporal en Firebase Hosting.
+6.  **Comentario de Preview:** Publica un comentario en la PR con la URL del preview.
 
-1. **Lint + Typecheck** (`lint-typecheck` job)
-   - `pnpm lint` — validación de código con ESLint (0 warnings)
-   - `pnpm typecheck` — verificación de tipos en todos los workspaces
+### Emuladores en CI
 
-2. **Tests + Coverage** (`test` job)
-   - Inicia el Firebase Emulator Suite
-   - `pnpm test --coverage` — corre tests de todos los workspaces (packages/motor, apps/web, etc.) con coverage
-   - Comentario automático en el PR con resultado y resumen de coverage
-   - **CI=true** detiene en el primer error de test
+**Política de Emuladores Explícitos:** Para garantizar que la CI sea robusta y rápida, todo job que utilice emuladores debe declararlos explícitamente con la flag `--only`.
 
-3. **Build** (`build` job)
-   - Depende de lint + test
-   - `pnpm build` — compila todas las apps y packages
-
-4. **Preview Hosting** (`preview-hosting` job)
-   - Depende de build (solo en PR)
-   - Despliega un **preview channel** de Firebase Hosting en `proyecto-qx-dev`
-   - Comenta en el PR con la URL `https://proyecto-qx-dev--preview-NNN.web.app` (donde NNN es el número del PR)
-   - Perfecto para testing manual antes de merge
-
-### Cómo leer los logs
-
-- Abre el PR y busca la sección **"Checks"** (verde = pass, rojo = fail)
-- Haz click en un check fallido para ver los logs detallados
-- Para errores de test: busca la línea de error en los logs, o descarga el artifact de coverage
-
-### Resultado en el PR
-
-Verás dos comentarios:
-1. **Checks de GitHub**: uno por cada job (lint, test, build, preview)
-2. **Coverage comment**: resumen de líneas, branches y funciones cubiertas
-
-## Flujo de Despliegue en Main
-
-Cuando haces merge a `main`, se ejecuta automáticamente:
-
-1. **Lint + Typecheck** — mismo que en PR
-2. **Tests con emuladores** — mismo que en PR
-3. **Build** — mismo que en PR
-4. **Firebase Deploy**
-   - Despliega Hosting, Functions y Firestore rules a `proyecto-qx-dev`
-   - Actualiza el canal live
-   - **Solo a dev**: no toca prod
-
-## Umbrales de Coverage
-
-- **Global**: 80% mínimo (líneas, branches, funciones)
-- **packages/motor**: 90% mínimo (porque es el motor de cálculos críticos)
-
-Si el coverage baja de estos umbrales, el PR no pasa. Agrega tests para mantener la cobertura.
-
-## Node.js Version
-
-**Todos los workflows usan Node 22.x** — coincide con Cloud Functions 2ª gen y la versión recomendada.
-
-## Secretos de GitHub requeridos
-
-Para que CI funcione necesitas:
-- `FIREBASE_SERVICE_ACCOUNT_PROYECTO_QX_DEV`: cuenta de servicio JSON de Firebase (dev)
-  - Se usa para authenticate en `firebase deploy` y preview channels
-  - **NUNCA lo commits al repo**
-
-## Cómo leer coverage
-
-Después de que pase el test job, hay un artifact `coverage/` (HTML report). Los checks también muestran un resumen en el comentario del PR.
-
-Para ver el reporte local después de correr `pnpm test --coverage`:
-```
-open coverage/index.html  # macOS
-xdg-open coverage/index.html  # Linux
-start coverage/index.html  # Windows
+```yaml
+- name: Run Tests with Coverage
+  run: |
+    pnpm exec firebase emulators:exec --only auth,firestore --project demo-qx-ci "pnpm test --coverage"
 ```
 
-## Reglas de merge
+- **`--only auth,firestore`**: Esta lista solo debe contener los emuladores que los tests del comando necesitan. A medida que se agreguen tests que usen Cloud Functions o Storage, se deberán añadir `functions` o `storage` a esta lista.
+- **`--project demo-qx-ci`**: Se utiliza un ID de proyecto ficticio que empieza con `demo-` para evitar que la CLI de Firebase intente acceder a recursos de producción.
 
-✅ **Required**: 
-- Lint en verde (0 warnings)
-- Typecheck en verde (sin errores TS)
-- Tests en verde (100% pass rate)
-- Coverage >= umbrales (80% global, 90% motor)
-- Preview Hosting accesible
+## Flujo de Merge a `main` (CD)
 
-❌ **Bloqueadores**:
-- Cualquier check rojo
-- Coverage por debajo de umbrales
-- Test timeout o crash
+El workflow `.github/workflows/deploy.yml` se dispara con cada merge a la rama `main`.
 
-## Deploy a Prod (futuro)
+### Pasos del Job `deploy`:
 
-Prod se despliega por tag (e.g., `v1.0.0`) con un workflow separado. No se implementa en MVP-03.
+1.  **Checkout, Setup & Build:** Realiza los mismos pasos de configuración y construcción que el job de CI.
+2.  **Autenticación con Google Cloud:** Se autentica con Google Cloud usando Workload Identity Federation.
+3.  **Deploy a `dev`:** Despliega `hosting`, `firestore` (reglas) y `functions` al proyecto de desarrollo (`proyecto-qx-dev`).
 
-## Troubleshooting
+## Umbrales de Cobertura
 
-### "Coverage is below threshold"
-- Agrega tests para alcanzar 80% (o 90% en motor)
-- Revisa `coverage/index.html` para ver qué líneas no están cubiertas
+La configuración de Vitest en `vitest.config.ts` define los siguientes umbrales de cobertura:
 
-### "Firebase Emulator failed to start"
-- Verifica que `firebase-tools` esté instalado: `pnpm add -D firebase-tools`
-- Revisa que `firebase.json` esté configurado correctamente
+- **Global:** 80% en `lines`, `functions`, `branches` y `statements`.
+- **`packages/motor`:** 90% en las mismas métricas.
 
-### "Preview Hosting didn't deploy"
-- Verifica `FIREBASE_SERVICE_ACCOUNT_PROYECTO_QX_DEV` en GitHub Secrets
-- Revisa que `firebase.json` tenga el bloque `hosting`
-
-### Tests timeout
-- Si un test tarda más de 30s, optimizalo o marca como `.skip`
-- Revisa logs en el job de test
+Un PR que no cumpla con estos umbrales fallará en el paso de tests.

@@ -1,33 +1,44 @@
+
 name: Deploy to Dev
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   deploy:
+    name: "Deploy to Dev Environment"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
         with:
           node-version: 22.x
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm exec firebase emulators:exec --project proyecto-qx-dev "pnpm test"
-        env:
-          CI: "true"
-      - run: pnpm build
-      - name: Deploy to Firebase
-        uses: FirebaseExtended/action-hosting-deploy@v0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PROYECTO_QX_DEV }}
+          version: 9
+          run_install: true
+
+      - name: Build
+        run: pnpm build
+
+      - name: Setup Google Cloud Credentials
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}"
+          service_account: "${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}"
+
+      - name: Deploy to Firebase Dev
+        uses: firebase/firebase-tools-action@v0
+        with:
           projectId: proyecto-qx-dev
-          channelId: live
+          args: "deploy --only hosting,firestore,functions"

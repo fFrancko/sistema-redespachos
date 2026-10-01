@@ -2,83 +2,88 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-  lint-typecheck:
+  validate:
+    name: Validate, Test & Preview
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22.x
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
 
-  test:
-    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22.x
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Run tests with coverage (per workspace)
-        run: pnpm exec firebase emulators:exec --project proyecto-qx-dev "pnpm --filter @sistema-redespachos/web test --coverage && pnpm --filter @sistema-redespachos/motor test --coverage"
-        env:
-          CI: "true"
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage/
-          retention-days: 7
+      - name: 1. Checkout Repository
+        uses: actions/checkout@v4
 
-  build:
-    runs-on: ubuntu-latest
-    needs: [lint-typecheck, test]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
+      - name: 2. Setup Environment
+        uses: pnpm/action-setup@v3
         with:
           version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 22.x
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
 
-  preview-hosting:
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
+      - name: 3. Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: 4. Lint
+        run: pnpm lint
+
+      - name: 5. Typecheck
+        run: pnpm typecheck
+
+      - name: 6. Build
+        run: pnpm build
+
+      - name: 7. Run Tests with Coverage
+        id: tests
+        run: |
+          COVERAGE_SUMMARY=$(pnpm exec firebase emulators:exec --only auth,firestore --project demo-qx-ci "pnpm test --coverage")
+          echo "coverage<<EOF" >> $GITHUB_OUTPUT
+          echo "$COVERAGE_SUMMARY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: 8. Add Coverage Comment to PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
         with:
-          version: 9
-      - uses: actions/setup-node@v4
+          header: vitest-coverage
+          message: |
+            #### Vitest Coverage Report
+            ```
+            ${{ steps.tests.outputs.coverage }}
+            ```
+
+      - name: 9. Setup Google Cloud Credentials
+        if: github.event_name == 'pull_request'
+        uses: google-github-actions/auth@v2
         with:
-          node-version: 22.x
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-      - uses: FirebaseExtended/action-hosting-deploy@v0
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: 10. Deploy to Preview Channel
+        id: preview
+        if: github.event_name == 'pull_request'
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PROYECTO_QX_DEV }}
           projectId: proyecto-qx-dev
           channelId: preview-${{ github.event.pull_request.number }}
+          expires: 7d
+
+      - name: 11. Add Preview URL Comment to PR
+        if: github.event_name == 'pull_request' && steps.preview.outputs.url
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: firebase-preview
+          message: |
+            #### ✅ Deploy Preview
+            **Preview URL:** [${{ steps.preview.outputs.url }}](${{ steps.preview.outputs.url }})
