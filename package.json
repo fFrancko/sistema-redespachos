@@ -11,6 +11,7 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "test:ui": "vitest --ui",
+    "test:coverage": "pnpm -r test:coverage",
     "build": "pnpm -r build",
     "dev": "pnpm -C apps/web dev",
     "dev:emulator": "firebase emulators:start",
@@ -28,5 +29,10 @@
     "prettier": "^3.3.0",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "vitest": "^2.1.9"
+    }
   }
 }

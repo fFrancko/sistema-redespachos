@@ -45,7 +45,7 @@ jobs:
       - name: 7. Run Tests with Coverage
         id: tests
         run: |
-          COVERAGE_SUMMARY=$(pnpm exec firebase emulators:exec --only auth,firestore --project demo-qx-ci "pnpm test --coverage")
+          COVERAGE_SUMMARY=$(pnpm exec firebase emulators:exec --only auth,firestore --project demo-qx-ci "pnpm test:coverage")
           echo "coverage<<EOF" >> $GITHUB_OUTPUT
           echo "$COVERAGE_SUMMARY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
