@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  vitest: ^2.1.9
-
 importers:
 
   .:
@@ -36,7 +33,7 @@ importers:
         specifier: ^5.5.0
         version: 5.9.3
       vitest:
-        specifier: ^2.1.9
+        specifier: ^2.0.0
         version: 2.1.9(@types/node@22.20.4)
 
   apps/functions:
@@ -86,7 +83,7 @@ importers:
         specifier: ^5.2.0
         version: 5.4.21(@types/node@22.20.4)
       vitest:
-        specifier: ^2.1.9
+        specifier: ^2.0.0
         version: 2.1.9(@types/node@22.20.4)
 
   packages/motor:
@@ -105,24 +102,14 @@ importers:
         specifier: ^5.5.0
         version: 5.9.3
       vitest:
-        specifier: ^2.1.9
+        specifier: ^2.0.0
         version: 2.1.9(@types/node@22.20.4)
 
   packages/shared:
-    dependencies:
-      decimal.js:
-        specifier: ^10.4.3
-        version: 10.6.0
-      zod:
-        specifier: ^3.22.4
-        version: 3.25.76
     devDependencies:
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
-      vitest:
-        specifier: ^2.1.9
-        version: 2.1.9(@types/node@22.20.4)
 
 packages:
 
@@ -1085,7 +1072,7 @@ packages:
     resolution: {integrity: sha512-Z2cOr0ksM00MpEfyVE8KXIYPEcBFxdbLSs56L8PO0QQMxt/6bDj45uQfxoc96v05KW3clk7vvgP0qfDit9DmfQ==}
     peerDependencies:
       '@vitest/browser': 2.1.9
-      vitest: ^2.1.9
+      vitest: 2.1.9
     peerDependenciesMeta:
       '@vitest/browser':
         optional: true

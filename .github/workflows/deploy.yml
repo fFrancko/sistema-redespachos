@@ -1,44 +1,58 @@
-
 name: Deploy to Dev
 
 on:
   push:
     branches: [main]
 
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
 jobs:
   deploy:
-    name: "Deploy to Dev Environment"
+    name: Deploy to proyecto-qx-dev
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node.js 22.x
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22.x
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
           version: 9
-          run_install: true
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test (Firebase emulators)
+        run: pnpm exec firebase emulators:exec --only auth,firestore --project demo-qx-ci "pnpm test"
+        env:
+          CI: "true"
 
       - name: Build
         run: pnpm build
 
-      - name: Setup Google Cloud Credentials
+      - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}"
-          service_account: "${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}"
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
 
-      - name: Deploy to Firebase Dev
-        uses: firebase/firebase-tools-action@v0
-        with:
-          projectId: proyecto-qx-dev
-          args: "deploy --only hosting,firestore,functions"
+      - name: Deploy Hosting and Functions
+        run: pnpm exec firebase deploy --project proyecto-qx-dev --only hosting,functions --non-interactive

@@ -98,23 +98,10 @@
 - Node: 22.x fijo.
 - Credenciales: Emulator en CI de PR; Secrets solo en el deploy a dev.
 
-## PLAN EJECUTADO
+## ESTADO (corrección de PR, alcance reordenado por Franco)
 
-✅ Listar archivos
-✅ Verificar estructura (vitest.config.ts existe, firebase.json tiene hosting, engines dice >=20 [DISCREPANCIA])
-✅ Crear `.github/workflows/ci.yml`
-✅ Crear `.github/workflows/deploy.yml`
-✅ Crear `.github/dependabot.yml`
-✅ Crear/ajustar `vitest.config.ts` (agregar coverage 80%, incluir v8 provider)
-✅ Crear `packages/motor/vitest.config.ts` (umbral 90%)
-✅ Agregar `ci:run` a package.json raíz
-✅ Escribir `docs/CI.md`
-✅ Correr `pnpm ci:run` localmente — PASÓ (lint ✓, typecheck ✓, test ✓, build ✓)
-✅ Pushear rama `mvp-03-ci-setup`
-✅ Nota de entrega con discrepancias reportadas
-
-## NOTA DE ENTREGA
-
-Ver archivo de nota de entrega separado en esta conversación.
-
-**Estado:** Listo para auditoría. Discrepancia de `engines` reportada (MVP-01 debe corregir).
+- Preview de Hosting por PR: **quitado** de MVP-03, queda para un ticket aparte.
+- Umbrales de cobertura (80% global, 90% `packages/motor/src/**`): definidos en `vitest.config.ts` pero **no activos** hasta MVP-14 (decisión de Franco). `thresholds.global` no se aplica en Vitest 2.x; la forma válida quedó documentada.
+- Tests: una sola corrida de Vitest desde la raíz (`pnpm test`, `pnpm test:coverage`).
+- Esquemas Zod de `packages/shared` movidos a la rama `mvp-04-zod-schemas`.
+- Deploy a dev bloqueado hasta cargar secrets de GCP y mapear el target de Hosting `web` en `.firebaserc` (ver `docs/CI.md`).

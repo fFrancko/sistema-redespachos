@@ -1,47 +1,71 @@
+# CI/CD
 
-# CI/CD (Integración y Despliegue Continuo)
+Dos workflows de GitHub Actions: `ci.yml` valida cada PR (y cada push a `main`), y `deploy.yml` despliega a **dev** en cada push a `main`. No hay ningún workflow hacia prod.
 
-## Flujo de Pull Request (CI)
+## Node.js 22.x
 
-El workflow `.github/workflows/ci.yml` se dispara con cada Pull Request abierto hacia la rama `main`.
+Todos los workflows usan **Node 22.x fijo**, sin matrix. Coincide con el runtime de Cloud Functions 2ª gen (arquitectura v3 §1) y con `engines.node >=22` del `package.json` raíz. El borrador inicial del ticket decía 20.x; se cambió a 22.x por esa coincidencia con Functions.
 
-### Pasos del Job `validate`:
+## CI en Pull Request (`.github/workflows/ci.yml`)
 
-1.  **Checkout & Setup:** Configura el entorno con Node.js 22.x y pnpm 9.x.
-2.  **Verificación Estática:** Ejecuta `pnpm lint`, `pnpm typecheck` y `pnpm build`.
-3.  **Tests con Emuladores:** Lanza los emuladores de Firebase necesarios y ejecuta `pnpm test --coverage`.
-4.  **Comentario de Coverage:** Publica un comentario en la PR con el resumen de la cobertura de tests.
-5.  **Deploy a Preview Channel:** Despliega la aplicación web a un canal de preview temporal en Firebase Hosting.
-6.  **Comentario de Preview:** Publica un comentario en la PR con la URL del preview.
+Se dispara en `pull_request` (cualquier rama destino) y en `push` a `main`. Un solo job, `validate`, con estos pasos en orden:
 
-### Emuladores en CI
+1. **Install:** `pnpm install --frozen-lockfile`. Falla si `pnpm-lock.yaml` no coincide con los `package.json`.
+2. **Lint:** `pnpm lint` (ESLint, 0 warnings).
+3. **Typecheck:** `pnpm typecheck` en todos los workspaces.
+4. **Test packages/motor:** `vitest run packages/motor`. Es un paso separado para que MVP-15 le agregue el gate de casos dorados.
+5. **Test con cobertura:** `firebase emulators:exec --only auth,firestore --project demo-qx-ci "pnpm test:coverage"`.
+6. **Build:** `pnpm build`.
+7. **Comentario de cobertura:** lee `coverage/coverage-summary.json` y publica (o actualiza) un único comentario fijo en la PR con una tabla de statements, branches, functions y lines.
+8. **Artefacto:** sube `coverage/` como `coverage-report` (7 días), incluso si los tests fallan.
 
-**Política de Emuladores Explícitos:** Para garantizar que la CI sea robusta y rápida, todo job que utilice emuladores debe declararlos explícitamente con la flag `--only`.
+### Emuladores
 
-```yaml
-- name: Run Tests with Coverage
-  run: |
-    pnpm exec firebase emulators:exec --only auth,firestore --project demo-qx-ci "pnpm test --coverage"
-```
+- `--only auth,firestore`: solo los emuladores que usan los tests. Si se agregan tests de Functions o Storage, hay que sumarlos a la lista.
+- `--project demo-qx-ci`: un proyecto con prefijo `demo-` hace que la CLI no busque credenciales ni toque recursos reales. Por eso CI de PR no necesita secrets.
 
-- **`--only auth,firestore`**: Esta lista solo debe contener los emuladores que los tests del comando necesitan. A medida que se agreguen tests que usen Cloud Functions o Storage, se deberán añadir `functions` o `storage` a esta lista.
-- **`--project demo-qx-ci`**: Se utiliza un ID de proyecto ficticio que empieza con `demo-` para evitar que la CLI de Firebase intente acceder a recursos de producción.
+### Cómo leer los logs
 
-## Flujo de Merge a `main` (CD)
+- En la PR, sección **Checks** → `CI / Lint, Typecheck, Test & Build` → **Details**. Cada paso se expande por separado; el que falló queda marcado en rojo.
+- La salida del emulador (avisos de "not authenticated", códigos de color) aparece solo en el log del paso de tests, no en el comentario.
+- Para ver qué líneas faltan cubrir: descargá el artefacto `coverage-report` del run (pestaña **Summary**) y abrí `index.html`.
+- Localmente: `pnpm ci:run` replica lint → typecheck → test → build, y `pnpm test:coverage` genera `coverage/` (ignorado por git).
 
-El workflow `.github/workflows/deploy.yml` se dispara con cada merge a la rama `main`.
+## Reglas de merge
 
-### Pasos del Job `deploy`:
+- CI en verde es obligatorio para mergear a `main`.
+- Un paso rojo (lint, typecheck, test o build) bloquea el merge.
 
-1.  **Checkout, Setup & Build:** Realiza los mismos pasos de configuración y construcción que el job de CI.
-2.  **Autenticación con Google Cloud:** Se autentica con Google Cloud usando Workload Identity Federation.
-3.  **Deploy a `dev`:** Despliega `hosting`, `firestore` (reglas) y `functions` al proyecto de desarrollo (`proyecto-qx-dev`).
+## Cobertura
 
-## Umbrales de Cobertura
+Vitest corre **una sola vez desde la raíz** con `vitest.config.ts` (no por paquete). Toma los tests de `packages/*/src` y `apps/*/src` y mide todo el código de esas carpetas.
 
-La configuración de Vitest en `vitest.config.ts` define los siguientes umbrales de cobertura:
+Umbrales acordados (Vitest 2.x, forma válida: claves a nivel raíz de `coverage.thresholds` más un glob por paquete):
 
-- **Global:** 80% en `lines`, `functions`, `branches` y `statements`.
-- **`packages/motor`:** 90% en las mismas métricas.
+| Alcance | Umbral | Estado |
+| --- | --- | --- |
+| Global | 80% (lines, functions, branches, statements) | Definido, **no activo** |
+| `packages/motor/src/**` | 90% | Definido, **no activo** |
 
-Un PR que no cumpla con estos umbrales fallará en el paso de tests.
+**Por qué no están activos:** hoy el código es mayormente placeholder (motor ~9% real). Exigir el umbral obligaría a escribir tests que no validan lógica de negocio. Se activan descomentando el bloque `thresholds` de `vitest.config.ts` cuando haya código real que medir. Motor tiene que tener el 90% activo en **MVP-14**.
+
+Nota: `thresholds: { global: {...} }` (estilo Jest) **no se aplica** en Vitest 2.x. Se ignora sin error. Se comprobó en MVP-03: con 0,65% de cobertura, el run salía con código 0.
+
+## Deploy a dev (`.github/workflows/deploy.yml`)
+
+Se dispara solo en `push` a `main`; nunca en PR. Pasos: install → lint → typecheck → test (emuladores) → build → autenticación a Google Cloud (Workload Identity Federation) → `firebase deploy --project proyecto-qx-dev --only hosting,functions`.
+
+No despliega reglas de Firestore ni Storage; esas se despliegan a mano (MVP-02 / MVP-09). El estado del deploy queda visible en el commit de `main` (check del workflow).
+
+### Pendiente para que el deploy funcione
+
+1. **Secrets de GitHub sin cargar.** El deploy requiere:
+   - `GCP_WORKLOAD_IDENTITY_PROVIDER`: proveedor de Workload Identity Federation (`projects/<n>/locations/global/workloadIdentityPools/<pool>/providers/<provider>`).
+   - `GCP_SERVICE_ACCOUNT_EMAIL`: service account con permisos de deploy de Hosting y Functions en `proyecto-qx-dev`.
+   Hasta que se carguen, el paso de autenticación falla. Nunca van en el repo.
+2. **Target de Hosting sin mapear.** `firebase.json` declara `"target": "web"`, pero en `.firebaserc` `targets` está vacío. Hay que mapearlo (`firebase target:apply hosting web <site-id> --project proyecto-qx-dev`) en el ticket de Firebase. MVP-03 no puede tocar esos archivos.
+
+## Fuera de alcance (deuda)
+
+- **Preview de Hosting por PR:** se quitó de MVP-03 y queda para un ticket aparte. Requiere los mismos secrets y el target de Hosting de arriba.
+- **Deploy a prod por tag:** ticket aparte.

@@ -9,13 +9,13 @@
   },
   "scripts": {
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
+    "test": "vitest run",
     "test:ui": "vitest --ui",
-    "test:coverage": "pnpm -r test:coverage",
+    "test:coverage": "vitest run --coverage",
     "build": "pnpm -r build",
     "dev": "pnpm -C apps/web dev",
     "dev:emulator": "firebase emulators:start",
-    "lint": "eslint apps/web/src apps/functions packages --ignore-pattern \"**/coverage/**\" --max-warnings 0",
+    "lint": "eslint apps/web/src apps/functions packages --max-warnings 0",
     "format": "prettier --write .",
     "ci:run": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
@@ -29,10 +29,5 @@
     "prettier": "^3.3.0",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "vitest": "^2.1.9"
-    }
   }
 }

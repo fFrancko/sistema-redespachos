@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+  push:
     branches: [main]
 
 concurrency:
@@ -10,80 +11,82 @@ concurrency:
 
 jobs:
   validate:
-    name: Validate, Test & Preview
+    name: Lint, Typecheck, Test & Build
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
-      id-token: write
 
     steps:
-      - name: 1. Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 2. Setup Environment
+      - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
           version: 9
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
         with:
           node-version: 22.x
           cache: pnpm
 
-      - name: 3. Install Dependencies
+      - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: 4. Lint
+      - name: Lint
         run: pnpm lint
 
-      - name: 5. Typecheck
+      - name: Typecheck
         run: pnpm typecheck
 
-      - name: 6. Build
+      - name: Test packages/motor
+        run: pnpm exec vitest run packages/motor
+        env:
+          CI: "true"
+
+      - name: Test with coverage (Firebase emulators)
+        run: pnpm exec firebase emulators:exec --only auth,firestore --project demo-qx-ci "pnpm test:coverage"
+        env:
+          CI: "true"
+
+      - name: Build
         run: pnpm build
 
-      - name: 7. Run Tests with Coverage
-        id: tests
+      - name: Build coverage comment
+        if: github.event_name == 'pull_request'
         run: |
-          COVERAGE_SUMMARY=$(pnpm exec firebase emulators:exec --only auth,firestore --project demo-qx-ci "pnpm test:coverage")
-          echo "coverage<<EOF" >> $GITHUB_OUTPUT
-          echo "$COVERAGE_SUMMARY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          node -e '
+          const t = require("./coverage/coverage-summary.json").total;
+          const row = (name, m) => `| ${name} | ${m.pct}% | ${m.covered}/${m.total} |`;
+          const body = [
+            "#### Cobertura de tests (Vitest)",
+            "",
+            "| Métrica | % | Cubierto/Total |",
+            "| --- | --- | --- |",
+            row("Statements", t.statements),
+            row("Branches", t.branches),
+            row("Functions", t.functions),
+            row("Lines", t.lines),
+            "",
+            "Reporte HTML completo en el artefacto `coverage-report` de este run.",
+          ].join("\n");
+          require("fs").writeFileSync("coverage-comment.md", body);
+          '
 
-      - name: 8. Add Coverage Comment to PR
+      - name: Post coverage comment
         if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: vitest-coverage
-          message: |
-            #### Vitest Coverage Report
-            ```
-            ${{ steps.tests.outputs.coverage }}
-            ```
+          path: coverage-comment.md
 
-      - name: 9. Setup Google Cloud Credentials
-        if: github.event_name == 'pull_request'
-        uses: google-github-actions/auth@v2
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
-
-      - name: 10. Deploy to Preview Channel
-        id: preview
-        if: github.event_name == 'pull_request'
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PROYECTO_QX_DEV }}
-          projectId: proyecto-qx-dev
-          channelId: preview-${{ github.event.pull_request.number }}
-          expires: 7d
-
-      - name: 11. Add Preview URL Comment to PR
-        if: github.event_name == 'pull_request' && steps.preview.outputs.url
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          header: firebase-preview
-          message: |
-            #### ✅ Deploy Preview
-            **Preview URL:** [${{ steps.preview.outputs.url }}](${{ steps.preview.outputs.url }})
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore
