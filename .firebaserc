@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "dev": "proyecto-qx-dev",
+    "prod": "proyecto-qx-prod"
+  },
+  "targets": {},
+  "etags": {}
+}
