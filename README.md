@@ -37,6 +37,7 @@ pnpm install
 ```bash
 # Desarrollo
 pnpm dev              # Lanza la web en http://localhost:5173
+pnpm dev:emulator     # Inicia Firebase Emulator Suite (Firestore, Auth, Functions)
 
 # Verificación
 pnpm typecheck        # TypeScript sin emitir

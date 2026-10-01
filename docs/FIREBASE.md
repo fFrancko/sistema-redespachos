@@ -4,6 +4,14 @@
 
 Firebase Firestore + Emulator Suite para desarrollo local. El emulador permite probar Firestore, Auth, Functions y Storage sin tocar proyectos reales.
 
+## Requisitos previos
+
+- **Node.js** ≥ 20 (ver `package.json`)
+- **Java** (JRE/JDK 11 o superior) — requerido por Firebase Emulator Suite
+  - Windows: descargar desde [oracle.com](https://www.oracle.com/java/technologies/downloads/) o usar `choco install openjdk11`
+  - macOS: `brew install openjdk@11`
+  - Linux: `sudo apt install openjdk-11-jre`
+
 ## Quick Start
 
 ### Emulator local

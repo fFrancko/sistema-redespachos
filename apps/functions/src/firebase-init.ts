@@ -7,13 +7,14 @@ admin.initializeApp({
   projectId: process.env.GCLOUD_PROJECT || 'proyecto-qx-dev',
 });
 
-const db = admin.firestore();
-const auth = admin.auth();
-
 // Development: connect to emulator if FUNCTIONS_EMULATOR is set
+// Must be set before calling admin.firestore() and admin.auth()
 if (process.env.FUNCTIONS_EMULATOR === 'true') {
   const firestoreEmulatorHost = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
   process.env.FIRESTORE_EMULATOR_HOST = firestoreEmulatorHost;
 }
+
+const db = admin.firestore();
+const auth = admin.auth();
 
 export { admin, db, auth };
