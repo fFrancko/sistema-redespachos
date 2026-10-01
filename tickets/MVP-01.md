@@ -204,7 +204,36 @@ apps/web build: Done
 
 ### Riesgos y deuda
 
-1. **Vitest en monorepo:** El tiempo de inicialización de Vitest es lento con el pool de forks. Si se vuelve bloqueante, revisar la configuración de workers en `vitest.config.ts`.
-2. **ESLint y Prettier no configurados:** Los scripts `lint` y `format` existen pero no hay `.eslintrc` ni `.prettierrc`. Esto se puede hacer en MVP-03 o dejar como CR aparte.
-3. **Node 20 vs 26:** El package.json raíz especifica Node >=20, pero las dependencias resueltas asumen Node 26 (según las semillas de npm). Esto es fine pero hay que verificar que el target de CI sea compatible.
-4. **Firebase Functions todavía no deployable:** `apps/functions/src/index.ts` tiene un placeholder. El deploy real requiere configuración de `firebase.json` y entorno (MVP-02).
+1. **Node 20 vs 26:** El package.json raíz especifica Node >=20, pero las dependencias resueltas asumen Node 26 (según las semillas de npm). Esto es fine pero hay que verificar que el target de CI sea compatible.
+2. **Firebase Functions todavía no deployable:** `apps/functions/src/index.ts` tiene un placeholder. El deploy real requiere configuración de `firebase.json` y entorno (MVP-02).
+
+---
+
+## Correcciones aplicadas post-auditoría
+
+Se aplicaron todas las observaciones del auditor (Gemini, carril B):
+
+1. **[Bloqueante]** `pnpm test` se cuelga en watch mode:
+   - ✅ Agregado `watch: false` en `vitest.config.ts`
+   - ✅ Cambio script test a `"vitest run"` en packages/motor y apps/web
+
+2. **[Mayor]** `pnpm lint` falla por ESLint v9:
+   - ✅ Creado `eslint.config.js` con parsers de TypeScript
+   - ✅ Instaladas `@typescript-eslint/parser` y `@typescript-eslint/eslint-plugin`
+   - ✅ Script lint actualizado a `eslint apps/web/src apps/functions packages`
+
+3. **[Menor]** Mejoras de configuración:
+   - ✅ Agregados alias `@shared` y `@motor` en `vite.config.ts`
+   - ✅ Cambio `server.open: false` en `vite.config.ts`
+   - ✅ Agregados scripts `"build": "tsc"` en packages/shared y packages/motor
+   - ✅ Test placeholder en `apps/web/src/App.test.tsx`
+
+**Verificación final (post-correcciones):**
+```bash
+✅ pnpm lint
+✅ pnpm typecheck
+✅ pnpm test (2 tests passed: packages/motor, apps/web)
+✅ pnpm build
+```
+
+**Estado:** APROBADO CON OBSERVACIONES → CORRECCIONES APLICADAS → LISTO PARA MERGEAR
