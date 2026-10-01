@@ -211,3 +211,26 @@ $ pnpm dev:emulator
 3. **Variables de entorno en .env.local:** Requiere manual setup del usuario (template provided en `.env.local.template`)
 
 **Estado:** LISTO PARA MERGEAR
+
+---
+
+## Correcciones post-auditoría (Gemini)
+
+Se aplicaron las 3 observaciones de la auditoría cruzada:
+
+1. ✅ **[Mayor] Conflicto de puertos:** Storage en `firebase.json` cambiado de puerto 4000 a 9199 (estándar Firebase)
+2. ✅ **[Mayor] Orden de inicialización:** En `firebase-init.ts`, el bloque `if (FUNCTIONS_EMULATOR)` ahora se ejecuta ANTES de `admin.firestore()` y `admin.auth()`
+3. ✅ **[Menor] Documentación:** 
+   - `docs/FIREBASE.md`: Agregada sección "Requisitos previos" (Java JRE/JDK 11+)
+   - `README.md`: Agregado script `pnpm dev:emulator` en sección de Scripts
+
+**Commit aplicado:** `b106b8e feat: Aplicar correcciones de auditoría MVP-02`
+
+**Verificación final:**
+```
+✅ pnpm typecheck   — 0 errores
+✅ pnpm lint        — 0 errores
+✅ pnpm test        — 2 tests passed
+```
+
+**Estado final:** APROBADO ✅ — Listo para mergear a main
