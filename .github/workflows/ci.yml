@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec firebase emulators:exec --project proyecto-qx-dev "pnpm test --coverage"
+        env:
+          CI: "true"
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const coverage = JSON.parse(fs.readFileSync('coverage/coverage-final.json', 'utf8'));
+            const entries = Object.values(coverage).filter(f => f.type === 'module');
+
+            if (entries.length === 0) {
+              console.log('No coverage data found.');
+              return;
+            }
+
+            const stats = entries.reduce((acc, file) => ({
+              lines: acc.lines + (file.l ? Object.values(file.l).filter(c => c !== null).length : 0),
+              linesMissed: acc.linesMissed + (file.l ? Object.values(file.l).filter(c => c === 0).length : 0),
+              branches: acc.branches + (file.b ? Object.values(file.b).length : 0),
+              functions: acc.functions + (file.f ? Object.values(file.f).length : 0),
+            }), { lines: 0, linesMissed: 0, branches: 0, functions: 0 });
+
+            const linesCovered = stats.lines - stats.linesMissed;
+            const linesPct = stats.lines > 0 ? ((linesCovered / stats.lines) * 100).toFixed(2) : 0;
+
+            const comment = `
+            ## ✅ Tests Passed
+
+            **Coverage Summary:**
+            - Lines: ${linesPct}% (${linesCovered}/${stats.lines})
+            - Branches: ${stats.branches}
+            - Functions: ${stats.functions}
+
+            See full coverage report: [coverage/index.html](coverage/index.html)
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment,
+            });
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint-typecheck, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+  preview-hosting:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PROYECTO_QX_DEV }}
+          projectId: proyecto-qx-dev
+          channelId: preview-${{ github.event.pull_request.number }}

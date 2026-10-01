@@ -14,7 +14,6 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: ['apps/*/src/**', 'packages/*/src/**'],
       exclude: [
         'node_modules/',
         'dist/',
@@ -25,10 +24,10 @@ export default defineConfig({
         '**/*.spec.*',
       ],
       thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 80,
-        statements: 80,
+        lines: 90,
+        functions: 90,
+        branches: 90,
+        statements: 90,
       },
     },
   },
