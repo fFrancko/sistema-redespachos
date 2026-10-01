@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest"
+    "build": "tsc",
+    "test": "vitest run"
   },
   "dependencies": {
     "decimal.js": "^10.4.3",
