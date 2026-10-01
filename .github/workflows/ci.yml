@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Lint, Typecheck, Test & Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test packages/motor
+        run: pnpm exec vitest run packages/motor
+        env:
+          CI: "true"
+
+      - name: Test with coverage (Firebase emulators)
+        run: pnpm exec firebase emulators:exec --only auth,firestore --project demo-qx-ci "pnpm test:coverage"
+        env:
+          CI: "true"
+
+      - name: Build
+        run: pnpm build
+
+      - name: Build coverage comment
+        if: github.event_name == 'pull_request'
+        run: |
+          node -e '
+          const t = require("./coverage/coverage-summary.json").total;
+          const row = (name, m) => `| ${name} | ${m.pct}% | ${m.covered}/${m.total} |`;
+          const body = [
+            "#### Cobertura de tests (Vitest)",
+            "",
+            "| Métrica | % | Cubierto/Total |",
+            "| --- | --- | --- |",
+            row("Statements", t.statements),
+            row("Branches", t.branches),
+            row("Functions", t.functions),
+            row("Lines", t.lines),
+            "",
+            "Reporte HTML completo en el artefacto `coverage-report` de este run.",
+          ].join("\n");
+          require("fs").writeFileSync("coverage-comment.md", body);
+          '
+
+      - name: Post coverage comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: vitest-coverage
+          path: coverage-comment.md
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore
