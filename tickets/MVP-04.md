@@ -296,3 +296,28 @@ Cada una lleva el supuesto con el que avancé. Las contradicciones que ya resolv
   4. `quoteSchema` acepta cotizaciones manuales con referencias nulas (pregunta 16); MVP-13/14 deben decidir si eso alcanza.
   5. Los tests de `src/` incluyen el fixture por ruta relativa (`test/fixtures/…`); si alguien mueve el fixture, fallan `orderRow.test.ts` y `orderRowRules.test.ts`.
   6. El estilo es el existente en el repo (comillas simples). Prettier no tiene configuración en el repo y con sus valores por defecto reformatearía todo a comillas dobles: conviene un `CR` con `.prettierrc` antes de que alguien corra `pnpm format`.
+
+- **Verificaciones de publicación** (pedidas por Franco):
+  1. Tag antes del force-push: `git ls-remote origin refs/tags/archivo/mvp-04-wip` devolvió `dbd4363f614e5a9885fb0a1eaeb10a81066be04b refs/tags/archivo/mvp-04-wip`, el commit esperado de la WIP. El tag no se borra hasta que MVP-04 esté mergeado y auditado.
+  2. Force-push con valor esperado fijado: `git push --force-with-lease=mvp-04-zod-schemas:dbd4363 origin mvp-04-zod-schemas` → `+ dbd4363...15f074f (forced update)`. La rama remota quedó en `15f074f`.
+  3. Zod en una sola major y una sola versión. `shared` declara `^3.22.0`, igual que `motor`. `pnpm why zod -r`:
+     ```
+     @sistema-redespachos/motor@0.0.1   dependencies: zod 3.25.76
+     @sistema-redespachos/shared@0.0.1  dependencies: zod 3.25.76
+     ```
+     El lockfile tiene una sola entrada `zod@3.25.76`.
+  4. `git diff --stat origin/main...mvp-04-zod-schemas` (sobre `15f074f`): 57 archivos, 4999 inserciones y 90 eliminaciones. Todos bajo `packages/shared/{src,test,scripts,package.json}`, `pnpm-lock.yaml` o `tickets/MVP-04.md`:
+     ```
+     packages/shared/package.json                       |  12 +-
+     packages/shared/scripts/{checkTmsFile,generateTmsFixture}.ts, scripts/tsconfig.json
+     packages/shared/src/{enums,errors,normalize,orderTransitions,primitives,roles}.ts (+ .test.ts)
+     packages/shared/src/schemas/*.ts (13 módulos + 11 .test.ts)
+     packages/shared/src/tms/*.ts (5 módulos + 4 .test.ts)
+     packages/shared/src/types/firebase.ts (+ firebase.test.ts)
+     packages/shared/src/index.ts
+     packages/shared/src/{.gitkeep, constants/index.ts, types/index.ts, utils/index.ts}  (eliminados)
+     packages/shared/test/fixtures/pedidos_tms_sintetico.csv
+     pnpm-lock.yaml                                     | 297 +++++++++++++++++
+     tickets/MVP-04.md                                  | 298 +++++++++++++++++
+     57 files changed, 4999 insertions(+), 90 deletions(-)
+     ```
