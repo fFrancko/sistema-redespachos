@@ -3,10 +3,18 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "build": "tsc"
+    "typecheck": "tsc --noEmit && tsc -p scripts --noEmit",
+    "build": "tsc",
+    "tms:fixture": "tsx scripts/generateTmsFixture.ts",
+    "tms:check": "tsx scripts/checkTmsFile.ts"
+  },
+  "dependencies": {
+    "decimal.js": "^10",
+    "zod": "^3.22.0"
   },
   "devDependencies": {
+    "csv-parse": "^7.0.3",
+    "tsx": "^4.23.15",
     "typescript": "^5.5.0"
   }
 }
