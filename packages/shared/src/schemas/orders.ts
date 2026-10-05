@@ -17,6 +17,7 @@ import {
   refSchema,
   timestampSchema,
 } from '../primitives.js';
+import { norm } from '../normalize.js';
 
 // Columnas de la plantilla de importación que usa el sistema (§2.4). Es lo que produce el parser del TMS.
 // Las demás columnas de las 47 van tal cual al mapa `origen_tms`, con su nombre snake_case.
@@ -157,6 +158,7 @@ export const orderSchema = orderImportSchema
     ...orderContextShape,
     cp_destino_norm: cpSchema,
     provincia_destino_norm: z.string().min(1),
+    localidad_destino_norm: z.string().min(1),
     provincia_origen: z.string().min(1).optional(),
     localidad_origen: z.string().min(1).optional(),
     canalizador: orderPostalRouterSchema.optional(),
@@ -179,6 +181,30 @@ export const orderSchema = orderImportSchema
         code: z.ZodIssueCode.custom,
         path: ['fecha_aceptacion'],
         message: 'fecha_aceptacion es obligatoria si hay confirmacion',
+      });
+    }
+
+    if (order.cp_destino_norm !== order.codigo_postal) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['cp_destino_norm'],
+        message: `cp_destino_norm debe ser "${order.codigo_postal}" (el código postal del destino del TMS)`,
+      });
+    }
+
+    if (order.provincia_destino_norm !== norm(order.provincia)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['provincia_destino_norm'],
+        message: `provincia_destino_norm debe ser norm(provincia): "${norm(order.provincia)}"`,
+      });
+    }
+
+    if (order.localidad_destino_norm !== norm(order.localidad)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['localidad_destino_norm'],
+        message: `localidad_destino_norm debe ser norm(localidad): "${norm(order.localidad)}"`,
       });
     }
   });

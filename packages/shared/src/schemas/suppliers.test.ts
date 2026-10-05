@@ -22,7 +22,7 @@ const validSupplier = {
 };
 
 describe('isValidCuit', () => {
-  it.each(['20123456786', '30500010912'])('acepta %s', (cuit) => {
+  it.each(['20123456786', '20001555554'])('acepta %s', (cuit) => {
     expect(isValidCuit(cuit)).toBe(true);
   });
 

@@ -8,6 +8,8 @@ describe('tarifarios', () => {
     vigencia_desde: '2026-10-01',
     vigencia_hasta: null,
     estado: 'BORRADOR',
+    creado_por: 'uid-admin',
+    creado_en: new Date(),
   };
 
   it('acepta un borrador sin datos de publicación y un tarifario publicado', () => {

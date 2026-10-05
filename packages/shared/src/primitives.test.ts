@@ -31,6 +31,9 @@ describe('dec', () => {
     ['sin parte entera', '.5'],
     ['texto', 'abc'],
     ['coma de miles', '1,000.00'],
+    ['negativo y sin parte entera', '-.5'],
+    ['dos puntos decimales', '.5.5'],
+    ['punto y coma juntos', '1.234,56'],
   ])('rechaza %s', (_label, value) => {
     expect(decSchema.safeParse(value).success).toBe(false);
   });
@@ -60,6 +63,8 @@ describe('dec', () => {
     expect(decimalToDec(new Decimal('1.00'))).toBe('1');
     expect(decimalToDec(new Decimal('0.00004'))).toBe('0');
     expect(decimalToDec(new Decimal('1250.5'))).toBe('1250.5');
+    // Hallazgo 8: caso exacto de borde
+    expect(decimalToDec(new Decimal('1250.50005'))).toBe('1250.5001');
   });
 
   it('decimalToDec rechaza negativos y no finitos', () => {
@@ -95,6 +100,9 @@ describe('cents', () => {
     expect(decimalToCents(new Decimal('10.004'))).toBe(1000);
     expect(decimalToCents(new Decimal('3420.83'))).toBe(342083);
     expect(decimalToCents(new Decimal('0'))).toBe(0);
+    // Hallazgo 8: casos exactos de borde
+    expect(decimalToCents(new Decimal('0.005'))).toBe(1);
+    expect(decimalToCents(new Decimal('0.0049'))).toBe(0);
   });
 
   it('decimalToCents rechaza negativos, no finitos y valores fuera de rango seguro', () => {

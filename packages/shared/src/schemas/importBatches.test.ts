@@ -11,6 +11,8 @@ const valid = {
   sin_cobertura: 3,
   cobertura_qx: 40,
   estado: 'LISTO',
+  importado_por: 'uid-admin',
+  importado_en: new Date(),
 };
 
 describe('lotes_importacion', () => {

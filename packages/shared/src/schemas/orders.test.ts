@@ -37,6 +37,7 @@ const validOrder = {
   ...validContext,
   cp_destino_norm: '1406',
   provincia_destino_norm: 'BUENOS AIRES',
+  localidad_destino_norm: 'LOCALIDAD UNO',
   estado: 'VALIDADO',
   errores: [],
 };

@@ -9,6 +9,7 @@ import {
   refSchema,
   timestampSchema,
 } from '../primitives.js';
+import { variantId } from '../normalize.js';
 import { checkVigencia } from './common.js';
 
 // Colección `tarifarios` (§2.3): cabecera de versión por proveedor.
@@ -23,6 +24,8 @@ export const tariffSchema = z
     archivo_origen_path: z.string().min(1).optional(),
     publicado_por: refSchema.optional(),
     publicado_en: timestampSchema.optional(),
+    creado_por: refSchema,
+    creado_en: timestampSchema,
   })
   .superRefine(checkVigencia);
 export type Tariff = z.infer<typeof tariffSchema>;
@@ -109,6 +112,19 @@ export const tariffRuleSchema = z
         code: z.ZodIssueCode.custom,
         path: ['costo_colecta'],
         message: 'costo_colecta es obligatorio si aplica_colecta',
+      });
+    }
+
+    const expectedVariantId = variantId(
+      rule.codigo_postal_destino,
+      rule.localidad_destino,
+      rule.zona_destino,
+    );
+    if (rule.variante_id !== expectedVariantId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['variante_id'],
+        message: `variante_id debe ser {cp}|{norm(localidad)}|{norm(zona)}: "${expectedVariantId}"`,
       });
     }
 

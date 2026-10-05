@@ -4,18 +4,29 @@ import { cpRequestOriginSchema, cpRequestStatusSchema } from '../enums.js';
 
 // Colección `canalizador_cp` (§2.5). Id: `{cp}_{localidad_normalizada}`.
 // `cobertura_qx` es booleano acá (derivado de subzona); en `pedidos.canalizador` es el enum SI | NO | DESCONOCIDA.
-export const postalRouterEntrySchema = z.object({
-  cp: cpSchema,
-  localidad: z.string(),
-  provincia: z.string(),
-  partido: z.string(),
-  zona: z.string(),
-  cabecera: z.string(),
-  subzona: z.string(),
-  zona_tarifario: z.string(),
-  cobertura_qx: z.boolean(),
-  version: z.number().int().min(1),
-});
+export const postalRouterEntrySchema = z
+  .object({
+    cp: cpSchema,
+    localidad: z.string(),
+    provincia: z.string(),
+    partido: z.string(),
+    zona: z.string(),
+    cabecera: z.string(),
+    subzona: z.string(),
+    zona_tarifario: z.string(),
+    cobertura_qx: z.boolean(),
+    version: z.number().int().min(1),
+  })
+  .superRefine((entry, ctx) => {
+    const expectedCobertura = entry.subzona !== 'SIN COBERTURA';
+    if (entry.cobertura_qx !== expectedCobertura) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['cobertura_qx'],
+        message: `cobertura_qx debe ser ${expectedCobertura} (subzona !== "SIN COBERTURA")`,
+      });
+    }
+  });
 export type PostalRouterEntry = z.infer<typeof postalRouterEntrySchema>;
 
 // Colección `solicitudes_cp` (§2.5). Id: cp.

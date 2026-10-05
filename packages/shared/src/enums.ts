@@ -32,7 +32,7 @@ export const USER_STATUSES = ['ACTIVO', 'INACTIVO'] as const;
 export const userStatusSchema = z.enum(USER_STATUSES);
 export type UserStatus = z.infer<typeof userStatusSchema>;
 
-export const ACCESS_REQUEST_STATUSES = ['PENDIENTE', 'RESUELTA'] as const;
+export const ACCESS_REQUEST_STATUSES = ['PENDIENTE', 'APROBADA', 'RECHAZADA'] as const;
 export const accessRequestStatusSchema = z.enum(ACCESS_REQUEST_STATUSES);
 export type AccessRequestStatus = z.infer<typeof accessRequestStatusSchema>;
 
