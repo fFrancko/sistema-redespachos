@@ -1,6 +1,6 @@
-import Decimal from 'decimal.js';
+import { Decimal } from 'decimal.js';
 import { z } from 'zod';
-import { ruleTypeSchema, tariffStatusSchema } from '../enums';
+import { ruleTypeSchema, tariffStatusSchema } from '../enums.js';
 import {
   controlFieldsShape,
   cpSchema,
@@ -8,8 +8,8 @@ import {
   decSchema,
   refSchema,
   timestampSchema,
-} from '../primitives';
-import { checkVigencia } from './common';
+} from '../primitives.js';
+import { checkVigencia } from './common.js';
 
 // Colección `tarifarios` (§2.3): cabecera de versión por proveedor.
 // archivo_origen_path, publicado_por y publicado_en son opcionales: un borrador aún no se publicó.
@@ -38,7 +38,7 @@ export const tariffRuleSchema = z
     provincia_origen: z.string().min(1), // `*` = cualquier origen
     localidad_origen: z.string().min(1).optional(),
     provincia_destino: z.string().min(1),
-    localidad_destino: z.string().min(1).optional(),
+    localidad_destino: z.string().min(1), // parte de variante_id y se muestra en las opciones
     codigo_postal_destino: cpSchema,
     zona_destino: z.string().min(1),
     plazo_estimado_dias: z.number().int().nonnegative().optional(),

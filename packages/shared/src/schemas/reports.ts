@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { reportStatusSchema } from '../enums';
-import { centsSchema, refSchema, timestampSchema } from '../primitives';
+import { reportStatusSchema } from '../enums.js';
+import { centsSchema, refSchema, timestampSchema } from '../primitives.js';
 
 const countSchema = z.number().int().nonnegative();
 

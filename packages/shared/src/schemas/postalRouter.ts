@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { cpSchema, refSchema, timestampSchema } from '../primitives';
-import { cpRequestOriginSchema, cpRequestStatusSchema } from '../enums';
+import { cpSchema, refSchema, timestampSchema } from '../primitives.js';
+import { cpRequestOriginSchema, cpRequestStatusSchema } from '../enums.js';
 
 // Colección `canalizador_cp` (§2.5). Id: `{cp}_{localidad_normalizada}`.
 // `cobertura_qx` es booleano acá (derivado de subzona); en `pedidos.canalizador` es el enum SI | NO | DESCONOCIDA.

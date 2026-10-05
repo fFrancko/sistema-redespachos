@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tariffRuleSchema, tariffSchema } from './tariffs';
+import { tariffRuleSchema, tariffSchema } from './tariffs.js';
 
 describe('tarifarios', () => {
   const valid = {
@@ -51,6 +51,7 @@ describe('reglas_tarifa', () => {
     id_proveedor: 'EXPRESO-UNO',
     provincia_origen: 'BUENOS AIRES',
     provincia_destino: 'CORDOBA',
+    localidad_destino: 'CORDOBA',
     codigo_postal_destino: '5000',
     zona_destino: 'ZONA UNO',
     variante_id: '5000|CORDOBA|ZONA UNO',
@@ -131,6 +132,8 @@ describe('reglas_tarifa', () => {
     ['precio_tramo con 5 decimales', { ...weightRule, precio_tramo: '1.00001' }],
     ['tipo_regla desconocido', { ...weightRule, tipo_regla: 'BULTO' }],
     ['zona_destino vacía', { ...weightRule, zona_destino: '' }],
+    ['localidad_destino ausente', { ...weightRule, localidad_destino: undefined }],
+    ['localidad_destino vacía', { ...weightRule, localidad_destino: '' }],
     ['kg_min como number', { ...weightRule, kg_min: 10 }],
   ])('rechaza %s', (_label, rule) => {
     expect(tariffRuleSchema.safeParse(rule).success).toBe(false);

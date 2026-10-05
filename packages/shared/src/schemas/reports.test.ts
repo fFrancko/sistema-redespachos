@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { purchaseOrderReportSchema, settlementReportSchema } from './reports';
+import { purchaseOrderReportSchema, settlementReportSchema } from './reports.js';
 
 describe('reportes_liquidacion', () => {
   const valid = {

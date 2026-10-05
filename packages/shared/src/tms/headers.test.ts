@@ -6,7 +6,7 @@ import {
   TMS_OPTIONAL_COLUMNS,
   normalizeHeader,
   resolveTmsHeaders,
-} from './headers';
+} from './headers.js';
 
 const EXPECTED_47 = [
   'Código de Empresa',

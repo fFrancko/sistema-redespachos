@@ -321,3 +321,32 @@ Cada una lleva el supuesto con el que avancé. Las contradicciones que ya resolv
      tickets/MVP-04.md                                  | 298 +++++++++++++++++
      57 files changed, 4999 insertions(+), 90 deletions(-)
      ```
+
+## Correcciones posteriores (FIX shared, rama `mvp-04-fix-shared`)
+
+Aplicadas sobre `main` después del merge de la PR #17. Reemplazan los supuestos 10, 18 y 19 de PREGUNTAS donde se indica.
+
+1. `packages/shared/tsconfig.json`: `noEmit: false` y `**/*.test.ts` en `exclude`. `pnpm build` ahora emite `dist/` sin ningún test (0 archivos `*.test.*` en `dist` ni en el tarball de `npm pack --dry-run`). Los tests siguen en el typecheck por `scripts/tsconfig.json`, que incluye `../src/**/*.ts`.
+2. `packages/shared/package.json`: `main`, `types`, `exports["."]` y `files: ["dist"]`.
+3. `fecha_aceptacion` en la raíz de `orderSchema` (D31, reemplaza el supuesto 19). Opcional sin `confirmacion` y obligatoria con ella. Se sacó de `confirmacion` (que queda `{respuesta, respuesta_id}`) porque D31 dice raíz y no anidado; la propuesta de dejarlo en ambos lugares queda descartada por eso.
+4. `localidad_destino` obligatoria en `tariffRuleSchema` (D30, reemplaza parte del supuesto 10).
+5. `invalidOrderSchema.estado` pasa a `CON_ERROR | CANCELADO` (D32, reemplaza parte del supuesto 18): un `CANCELADO` desde `CON_ERROR` conserva `errores` no vacío. Un `CANCELADO` limpio sigue validando por `orderSchema`.
+
+Verificación: `pnpm lint`, `pnpm typecheck`, `pnpm test` (470 tests) y `pnpm build` en verde.
+
+6. **`NodeNext` en `packages/shared`** (ampliación pedida por Franco). `tsconfig.json` pasa a `module` y `moduleResolution` `NodeNext`; los 98 imports relativos de `src/` y `scripts/` llevan extensión `.js` (o `/index.js`); `decimal.js` se importa con nombre (`import { Decimal }`) porque sus tipos son CommonJS. Salida de `node --input-type=module -e "import('./packages/shared/dist/index.js')"` desde la raíz: vacía, código de salida 0. Con uso real: 117 exports, `norm(' Córdoba. ')` = `CORDOBA`, `canTransition` correcto. Antes fallaba con `ERR_MODULE_NOT_FOUND`.
+7. **CR: deps** (autorizado por Franco). `"@sistema-redespachos/shared": "workspace:*"` en `packages/motor/package.json` y `apps/functions/package.json`; `pnpm install` agregó solo 6 líneas al lockfile (los dos `link:`) y Zod sigue en una única versión (3.25.76).
+8. **Prueba de destrabe de punta a punta** (archivos temporales en `packages/motor/src` y `apps/functions/src`, ya eliminados y no commiteados), con `shared` construido primero:
+   - `pnpm typecheck`: `apps/web`, `packages/shared`, `packages/motor` y `apps/functions` en `Done`.
+   - `pnpm build`: los cuatro en `Done`.
+   - `pnpm test`: 23 archivos y 471 tests pasan, incluido un test temporal de `motor` que importaba `@sistema-redespachos/shared`.
+   - El JS emitido de `functions` (`import { DomainError, assertTransition, norm } from '@sistema-redespachos/shared'`) se ejecutó con Node puro y devolvió `TRANSICION_INVALIDA:CORDOBA`.
+
+Verificación final de la rama: `pnpm lint`, `pnpm typecheck`, `pnpm test` (470 tests) y `pnpm build` en verde; `checkTmsFile` sobre el archivo real sigue en 538 filas y 0 errores de formato.
+
+9. **CI: paso `Build shared`** (CR ampliado por Franco a `.github/workflows/ci.yml`). Se agregó, antes de `Lint`, `pnpm --filter @sistema-redespachos/shared build`; el `pnpm build` final queda igual. Motivo: `packages/shared/dist` está en `.gitignore` (línea 7) y el workflow corre `typecheck` antes de `build`, así que en cuanto `motor` o `functions` importen `@sistema-redespachos/shared` (desde MVP-13), `typecheck` y `test` fallarían con `TS2307` en un checkout limpio. **Es preventivo:** hoy ningún archivo de `motor`, `functions` ni `web` importa `shared`, y con el código actual de la rama el typecheck pasa aun sin `dist/` (verificado en un clon limpio). El `TS2307` se reprodujo con los archivos temporales de la prueba de destrabe, que sí importaban `shared`.
+   - **Validación local:** `act` y Docker no están instalados, así que no se pudo correr el workflow tal cual. Se simuló en un clon limpio de la rama (sin `dist/`) con los mismos pasos y en el mismo orden: `pnpm install --frozen-lockfile`, `Build shared`, `pnpm lint`, `pnpm typecheck` (los cuatro paquetes en `Done`), `pnpm exec vitest run packages/motor`, `pnpm test:coverage` y `pnpm build`, todos con código de salida 0. Quedan sin validar localmente solo el paso con `firebase emulators:exec` (los tests no dependen de los emuladores) y los pasos de comentario y artefacto de cobertura. **Hay que validarlos en el primer run de la PR.**
+
+10. **CI: `Build shared` también en `deploy.yml`** (CR de `.github` ampliado por Franco a los dos workflows). `deploy.yml` tenía el mismo orden `Lint` → `Typecheck` → `Test` → `Build`; tenía el mismo defecto latente que `ci.yml`: no falla hoy (nada importa `shared` todavía), pero fallaría en `Typecheck` con `TS2307` desde el primer import real de `shared` en `motor` o `functions`. El paso es el mismo y va antes de `Lint`. Se simuló en un clon limpio de la rama con los pasos de `deploy.yml` en orden (`install --frozen-lockfile`, `Build shared`, `lint`, `typecheck`, `pnpm test`, `build`): todos con código de salida 0.
+
+**Fuera de alcance de MVP-04:** el deploy de `functions` está roto desde antes de este FIX (sin `main`, sin salida de build, `workspace:*` sin resolver), hoy enmascarado porque el deploy se omite sin los secrets de GCP. No es un hallazgo contra MVP-04. La evidencia y el alcance propuesto (severidad alta y latente, incluido que `Check deploy secrets` deje de salir verde cuando los secrets se esperan) quedan en el borrador `tickets/DEPLOY-functions.md`.

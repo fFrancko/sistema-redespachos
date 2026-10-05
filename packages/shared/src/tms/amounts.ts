@@ -1,5 +1,5 @@
-import { centsSchema, decToDecimal, decimalToCents, decSchema } from '../primitives';
-import type { Cents, Dec } from '../primitives';
+import { centsSchema, decToDecimal, decimalToCents, decSchema } from '../primitives.js';
+import type { Cents, Dec } from '../primitives.js';
 
 // D28: coma de miles y punto decimal (`349,731.72`). La coma solo es válida como separador de
 // miles (grupos de tres dígitos); cualquier otra forma es ambigua o inválida. Además, el archivo

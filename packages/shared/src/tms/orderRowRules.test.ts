@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'csv-parse/sync';
 import { describe, expect, it } from 'vitest';
-import { normalizeHeader } from './headers';
-import { parseTmsRow } from './orderRow';
-import type { TmsRawRow, TmsRowContext } from './orderRow';
+import { normalizeHeader } from './headers.js';
+import { parseTmsRow } from './orderRow.js';
+import type { TmsRawRow, TmsRowContext } from './orderRow.js';
 
 const records = parse(
   readFileSync(

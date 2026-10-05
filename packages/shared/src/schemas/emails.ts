@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { attachmentColumnSchema, attachmentFormatSchema, emailStatusSchema } from '../enums';
-import { emailListSchema, refSchema } from '../primitives';
+import { attachmentColumnSchema, attachmentFormatSchema, emailStatusSchema } from '../enums.js';
+import { emailListSchema, refSchema } from '../primitives.js';
 
 // Colección `plantillas_email` (§2.5): estructura parametrizable de la proforma.
 export const emailTemplateSchema = z.object({

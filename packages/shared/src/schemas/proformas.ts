@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { proformaStatusSchema, responseSchema } from '../enums';
-import { centsSchema, dateSchema, refSchema, timestampSchema } from '../primitives';
+import { proformaStatusSchema, responseSchema } from '../enums.js';
+import { centsSchema, dateSchema, refSchema, timestampSchema } from '../primitives.js';
 
 // Colección `proformas` (§2.5): una por proveedor y lote, con totales congelados al enviar.
 export const proformaSchema = z.object({

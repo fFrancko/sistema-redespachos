@@ -1,11 +1,11 @@
-import { norm } from '../normalize';
-import { CP_PATTERN, decToDecimal } from '../primitives';
-import type { Dec } from '../primitives';
-import type { ObservationCode } from '../errors';
-import type { OrderImport, OrderRowError } from '../schemas/orders';
-import { parseTmsAmount, parseTmsInteger, tmsAmountToCents } from './amounts';
-import { parseTmsDate } from './dates';
-import { TMS_ALL_COLUMNS, TMS_COLUMN_BY_KEY, normalizeHeader } from './headers';
+import { norm } from '../normalize.js';
+import { CP_PATTERN, decToDecimal } from '../primitives.js';
+import type { Dec } from '../primitives.js';
+import type { ObservationCode } from '../errors.js';
+import type { OrderImport, OrderRowError } from '../schemas/orders.js';
+import { parseTmsAmount, parseTmsInteger, tmsAmountToCents } from './amounts.js';
+import { parseTmsDate } from './dates.js';
+import { TMS_ALL_COLUMNS, TMS_COLUMN_BY_KEY, normalizeHeader } from './headers.js';
 
 // Fila cruda: encabezado original del archivo → valor de la celda.
 export type TmsRawRow = Readonly<Record<string, string | undefined>>;

@@ -4,9 +4,9 @@
 // Uso: pnpm --filter @sistema-redespachos/shared tms:check <ruta.csv> [--provincias]
 import { readFileSync } from 'node:fs';
 import { parse } from 'csv-parse/sync';
-import { norm } from '../src/normalize';
-import { TMS_ALL_COLUMNS, resolveTmsHeaders } from '../src/tms/headers';
-import { parseTmsRow } from '../src/tms/orderRow';
+import { norm } from '../src/normalize.js';
+import { TMS_ALL_COLUMNS, resolveTmsHeaders } from '../src/tms/headers.js';
+import { parseTmsRow } from '../src/tms/orderRow.js';
 
 const TOLERANCIA_VOLUMEN_PCT = '5';
 

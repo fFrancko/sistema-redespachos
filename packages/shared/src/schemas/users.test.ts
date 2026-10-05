@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ROLES } from '../roles';
-import { accessRequestSchema, userSchema } from './users';
+import { ROLES } from '../roles.js';
+import { accessRequestSchema, userSchema } from './users.js';
 
 const validUser = {
   email: 'ana@qx.example',

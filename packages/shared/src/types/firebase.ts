@@ -19,7 +19,7 @@ import {
   tariffRuleSchema,
   tariffSchema,
   userSchema,
-} from '../schemas';
+} from '../schemas/index.js';
 
 // Las 19 colecciones de Firestore de la Fase 1 (§2.1), con su nombre literal.
 export const COLLECTION_NAMES = [

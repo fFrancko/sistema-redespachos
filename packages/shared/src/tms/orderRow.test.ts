@@ -2,10 +2,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'csv-parse/sync';
 import { describe, expect, it } from 'vitest';
-import { orderImportSchema } from '../schemas/orders';
-import { resolveTmsHeaders } from './headers';
-import { parseTmsRow } from './orderRow';
-import type { TmsRowContext } from './orderRow';
+import { orderImportSchema } from '../schemas/orders.js';
+import { resolveTmsHeaders } from './headers.js';
+import { parseTmsRow } from './orderRow.js';
+import type { TmsRowContext } from './orderRow.js';
 
 const FIXTURE_PATH = fileURLToPath(
   new URL('../../test/fixtures/pedidos_tms_sintetico.csv', import.meta.url),

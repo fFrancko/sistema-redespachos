@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ORDER_STATUSES } from './enums';
-import type { OrderStatus } from './enums';
-import { DomainError } from './errors';
-import { ORDER_TRANSITIONS, assertTransition, canTransition } from './orderTransitions';
-import { ROLES } from './roles';
+import { ORDER_STATUSES } from './enums.js';
+import type { OrderStatus } from './enums.js';
+import { DomainError } from './errors.js';
+import { ORDER_TRANSITIONS, assertTransition, canTransition } from './orderTransitions.js';
+import { ROLES } from './roles.js';
 
 // Copia literal de las columnas "Llega desde" y "Puede pasar a" de §3.7 de la arquitectura v3.
 // `IMPORTACION` es el origen de los estados iniciales: no es un estado del pedido.

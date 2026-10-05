@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cuitIndexSchema, isValidCuit, supplierSchema } from './suppliers';
+import { cuitIndexSchema, isValidCuit, supplierSchema } from './suppliers.js';
 
 const validSupplier = {
   id_proveedor: 'EXPRESO-UNO',
