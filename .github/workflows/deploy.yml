@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy to proyecto-qx-dev
+    name: Deploy to qx-redespachos-dev
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -73,4 +73,4 @@ jobs:
 
       - name: Deploy Hosting and Functions
         if: steps.secrets.outputs.ready == 'true'
-        run: pnpm exec firebase deploy --project proyecto-qx-dev --only hosting,functions --non-interactive
+        run: pnpm exec firebase deploy --project qx-redespachos-dev --only hosting,functions --non-interactive

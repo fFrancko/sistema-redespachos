@@ -4,7 +4,7 @@ import * as admin from 'firebase-admin';
 // In emulator mode, the SDK connects to local emulators
 // In production, it uses credentials from GOOGLE_APPLICATION_CREDENTIALS env var
 admin.initializeApp({
-  projectId: process.env.GCLOUD_PROJECT || 'proyecto-qx-dev',
+  projectId: process.env.GCLOUD_PROJECT || 'qx-redespachos-dev',
 });
 
 // Development: connect to emulator if FUNCTIONS_EMULATOR is set

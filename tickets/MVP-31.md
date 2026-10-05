@@ -28,6 +28,14 @@ Evidencia:
 4. `deploy.yml`: que la ausencia de secrets **falle** el job en lugar de avisar y seguir en verde. Hoy ese comportamiento esconde el problema y va a esconder los próximos.
 5. Verificá que `ci.yml` y `deploy.yml` conserven el paso `Build shared` antes de `Lint`.
 
+### Agregado en el cierre de la Ola 0 (`docs/ola-0/informe-validacion.md`, H-05 y H-09)
+
+6. **Functions de 2ª gen y región.** El `helloWorld` actual se registra como 1ª gen (`firebase-functions` 5.1.1, `platform: 'gcfv1'`), contra la v3 §1. Reemplazalo por una callable de ejemplo con `firebase-functions/v2/https` y `region: 'southamerica-east1'` que importe algo de `@sistema-redespachos/shared`.
+7. **`NodeNext` en `apps/functions`.** Hoy hereda `moduleResolution: bundler` de la raíz: un import relativo sin `.js` pasa el typecheck y falla al cargar en Node. Mismo esquema que `packages/shared`.
+8. **Registro de Functions sin índice compartido** (decidido el 5/10, P-07): `apps/functions/src/index.ts` queda con una línea por cada dominio de §3.8 (`auth`, `admin`, `postalRouter`, `suppliers`, `tariffs`, `emailTemplates`, `orders`, `proformas`, `emails`, `settlement`, `purchaseOrders`, `reports`) que reexporta un `index.ts` de dominio vacío. Después de este ticket, el índice raíz no se edita más; cada carril edita los índices de sus dominios.
+9. **Punto 4, decidido el 5/10 (P-05):** el deploy se activa con la variable de repositorio `DEPLOY_ENABLED`. Con `DEPLOY_ENABLED = 'true'` y algún secret ausente, el job falla con `exit 1`; con la variable ausente o en otro valor, el deploy se omite con un aviso explícito en el resumen del job (`$GITHUB_STEP_SUMMARY`), no con un warning que pase inadvertido.
+10. **Proyecto real:** el proyecto de dev es `qx-redespachos-dev` (ya configurado en `.firebaserc` y `deploy.yml`).
+
 ## Fuera de alcance
 
 - Cualquier cambio en `packages/shared`, `packages/motor` o el código de negocio de `apps/functions`.
@@ -36,10 +44,11 @@ Evidencia:
 ## Criterio de aceptación
 
 1. `pnpm build` genera `apps/functions/lib` con un entry válido, y la salida pegada.
-2. `firebase deploy --only functions --project proyecto-qx-dev` publica, y una callable responde. Si no tenés credenciales, dejá el comando y la verificación local con los emuladores, y marcá el punto como pendiente de Franco explícitamente.
-3. Sin los secrets configurados, el job de deploy falla con un mensaje claro. Con la salida pegada.
-4. `lint`, `typecheck`, `test` y `build` en verde sobre la rama.
+2. `firebase deploy --only functions --project qx-redespachos-dev` publica, y una callable responde. Si no tenés credenciales, dejá el comando y la verificación local con los emuladores, y marcá el punto como pendiente de Franco explícitamente.
+3. Con `DEPLOY_ENABLED = 'true'` y sin los secrets, el job de deploy falla con un mensaje claro; sin la variable, el resumen del run dice que el deploy está desactivado. Con la salida pegada.
+4. `lint`, `typecheck`, `test` y `build` en verde sobre la rama, con la secuencia de `AGENTS.md` §5.5.
 5. Nota de entrega con la opción de empaquetado elegida y por qué.
+6. El JS emitido de `apps/functions/lib` carga con Node puro (`node --input-type=module -e "import('./apps/functions/lib/index.js')"`) y la callable de ejemplo es de 2ª gen en `southamerica-east1`.
 
 ## Plan
 

@@ -1,6 +1,6 @@
 {
   "projects": {
-    "dev": "proyecto-qx-dev",
+    "dev": "qx-redespachos-dev",
     "prod": "proyecto-qx-prod"
   },
   "targets": {},

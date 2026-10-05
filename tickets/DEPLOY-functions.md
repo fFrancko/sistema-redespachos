@@ -1,6 +1,8 @@
 # DEPLOY-functions — Dejar desplegable `apps/functions` y que el deploy no enmascare fallas
 
-> Borrador sin número, creado desde el FIX de MVP-04. Franco lo numera y lo asigna.
+> **Reemplazado por `tickets/MVP-31.md`** (cierre de la Ola 0). Se conserva como antecedente. Difieren en el manejo de los secrets (punto 5 de este borrador, punto 4 de MVP-31): este borrador propone activar el deploy con una variable `DEPLOY_ENABLED`; MVP-31 pide que el job falle siempre que falten los secrets. Franco eligió la variable `DEPLOY_ENABLED` el 5/10 (P-05); quedó incorporada a MVP-31. No asignar este archivo a ningún agente.
+>
+> Borrador sin número, creado desde el FIX de MVP-04.
 
 - **Carril:** Deploy (por definir)
 - **Agente:** por definir
