@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { batchStatusSchema } from '../enums';
-import { dateSchema } from '../primitives';
+import { batchStatusSchema } from '../enums.js';
+import { dateSchema } from '../primitives.js';
 
 const countSchema = z.number().int().nonnegative();
 

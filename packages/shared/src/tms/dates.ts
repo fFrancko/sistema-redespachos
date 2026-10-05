@@ -1,5 +1,5 @@
-import { isValidCalendarDate } from '../primitives';
-import type { DateString } from '../primitives';
+import { isValidCalendarDate } from '../primitives.js';
+import type { DateString } from '../primitives.js';
 
 // D28: `dd/MM/yyyy` o `dd/MM/yyyy HH:mm:ss`.
 const TMS_DATE_PATTERN = /^(\d{2})\/(\d{2})\/(\d{4})(?: ([01]\d|2[0-3]):[0-5]\d:[0-5]\d)?$/;

@@ -7,7 +7,7 @@ import {
   ROW_ERROR_CODES,
   TARIFF_WARNING_CODES,
   businessErrorCodeSchema,
-} from './errors';
+} from './errors.js';
 
 describe('catálogos de códigos', () => {
   it('errores de negocio (§3.8)', () => {

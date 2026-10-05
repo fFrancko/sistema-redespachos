@@ -1,4 +1,4 @@
-import Decimal from 'decimal.js';
+import { Decimal } from 'decimal.js';
 import { z } from 'zod';
 
 // Tipos de §2 de la arquitectura v3. Los tipos TS se derivan con z.infer, nunca a mano.

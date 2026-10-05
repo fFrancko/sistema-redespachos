@@ -5,7 +5,7 @@ import {
   orderImportSchema,
   orderSchema,
   quoteSchema,
-} from './orders';
+} from './orders.js';
 
 const validImport = {
   nro_pedido: 'SINT-0001',

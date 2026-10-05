@@ -1,6 +1,6 @@
-import { DomainError } from './errors';
-import type { OrderStatus } from './enums';
-import type { Role } from './roles';
+import { DomainError } from './errors.js';
+import type { OrderStatus } from './enums.js';
+import type { Role } from './roles.js';
 
 export interface OrderTransition {
   to: OrderStatus;

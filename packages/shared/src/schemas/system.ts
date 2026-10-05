@@ -5,7 +5,7 @@ import {
   percentSchema,
   refSchema,
   timestampSchema,
-} from '../primitives';
+} from '../primitives.js';
 
 // Colección `auditoria` (§2.5). Solo la escribe el backend (withAudit).
 export const auditEntrySchema = z.object({

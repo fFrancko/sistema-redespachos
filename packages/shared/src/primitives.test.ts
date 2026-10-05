@@ -1,4 +1,4 @@
-import Decimal from 'decimal.js';
+import { Decimal } from 'decimal.js';
 import { describe, expect, it } from 'vitest';
 import {
   centsSchema,
@@ -14,7 +14,7 @@ import {
   positiveDecSchema,
   refSchema,
   timestampSchema,
-} from './primitives';
+} from './primitives.js';
 
 describe('dec', () => {
   it.each(['0', '123.45', '1250.5000', '0.0001', '10'])('acepta %s', (value) => {

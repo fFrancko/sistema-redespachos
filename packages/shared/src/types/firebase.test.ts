@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COLLECTION_NAMES, collectionSchemas } from './firebase';
+import { COLLECTION_NAMES, collectionSchemas } from './firebase.js';
 
 describe('colecciones de la Fase 1 (§2.1)', () => {
   it('son exactamente 19, sin repetidos', () => {

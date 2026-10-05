@@ -3,7 +3,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TMS_ALL_COLUMNS } from '../src/tms/headers';
+import { TMS_ALL_COLUMNS } from '../src/tms/headers.js';
 
 type Overrides = Readonly<Record<string, string>>;
 

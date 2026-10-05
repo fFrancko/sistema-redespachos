@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cpRequestSchema, postalRouterEntrySchema } from './postalRouter';
+import { cpRequestSchema, postalRouterEntrySchema } from './postalRouter.js';
 
 describe('canalizador_cp', () => {
   const valid = {

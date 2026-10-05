@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { userStatusSchema, accessRequestStatusSchema } from '../enums';
-import { controlFieldsShape, emailSchema, refSchema, timestampSchema } from '../primitives';
-import { roleSchema } from '../roles';
+import { userStatusSchema, accessRequestStatusSchema } from '../enums.js';
+import { controlFieldsShape, emailSchema, refSchema, timestampSchema } from '../primitives.js';
+import { roleSchema } from '../roles.js';
 
 // Colección `usuarios` (§2.1). El id del documento es el uid de Auth.
 // La arquitectura solo dice "Perfil, rol, sucursales asignadas, estado": los campos son un supuesto.

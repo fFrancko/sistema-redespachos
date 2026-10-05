@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { auditEntrySchema, paramsSchema } from './system';
+import { auditEntrySchema, paramsSchema } from './system.js';
 
 describe('auditoria', () => {
   const valid = {

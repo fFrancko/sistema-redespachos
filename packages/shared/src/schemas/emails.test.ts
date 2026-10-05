@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emailTemplateSchema, outboundEmailSchema } from './emails';
+import { emailTemplateSchema, outboundEmailSchema } from './emails.js';
 
 describe('plantillas_email', () => {
   const valid = {

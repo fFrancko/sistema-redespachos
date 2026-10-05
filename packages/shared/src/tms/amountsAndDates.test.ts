@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseTmsAmount, parseTmsInteger, tmsAmountToCents } from './amounts';
-import { parseTmsDate } from './dates';
+import { parseTmsAmount, parseTmsInteger, tmsAmountToCents } from './amounts.js';
+import { parseTmsDate } from './dates.js';
 
 describe('parseTmsAmount (D28)', () => {
   it.each([

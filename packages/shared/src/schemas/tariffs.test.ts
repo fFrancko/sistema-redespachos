@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tariffRuleSchema, tariffSchema } from './tariffs';
+import { tariffRuleSchema, tariffSchema } from './tariffs.js';
 
 describe('tarifarios', () => {
   const valid = {

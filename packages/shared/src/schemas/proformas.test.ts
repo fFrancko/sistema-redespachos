@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { proformaSchema, supplierResponseSchema } from './proformas';
+import { proformaSchema, supplierResponseSchema } from './proformas.js';
 
 describe('proformas', () => {
   const valid = {

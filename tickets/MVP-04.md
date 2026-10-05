@@ -334,4 +334,17 @@ Aplicadas sobre `main` después del merge de la PR #17. Reemplazan los supuestos
 
 Verificación: `pnpm lint`, `pnpm typecheck`, `pnpm test` (470 tests) y `pnpm build` en verde.
 
-**Pendiente que no cubre este FIX:** `dist/index.js` no se puede importar con Node puro (`ERR_MODULE_NOT_FOUND` por los imports relativos sin extensión de `src/`); sí funciona con tsx y con bundlers. Además `packages/motor` y `apps/functions` todavía no declaran `@sistema-redespachos/shared` como dependencia.
+6. **`NodeNext` en `packages/shared`** (ampliación pedida por Franco). `tsconfig.json` pasa a `module` y `moduleResolution` `NodeNext`; los 98 imports relativos de `src/` y `scripts/` llevan extensión `.js` (o `/index.js`); `decimal.js` se importa con nombre (`import { Decimal }`) porque sus tipos son CommonJS. Salida de `node --input-type=module -e "import('./packages/shared/dist/index.js')"` desde la raíz: vacía, código de salida 0. Con uso real: 117 exports, `norm(' Córdoba. ')` = `CORDOBA`, `canTransition` correcto. Antes fallaba con `ERR_MODULE_NOT_FOUND`.
+7. **CR: deps** (autorizado por Franco). `"@sistema-redespachos/shared": "workspace:*"` en `packages/motor/package.json` y `apps/functions/package.json`; `pnpm install` agregó solo 6 líneas al lockfile (los dos `link:`) y Zod sigue en una única versión (3.25.76).
+8. **Prueba de destrabe de punta a punta** (archivos temporales en `packages/motor/src` y `apps/functions/src`, ya eliminados y no commiteados), con `shared` construido primero:
+   - `pnpm typecheck`: `apps/web`, `packages/shared`, `packages/motor` y `apps/functions` en `Done`.
+   - `pnpm build`: los cuatro en `Done`.
+   - `pnpm test`: 23 archivos y 471 tests pasan, incluido un test temporal de `motor` que importaba `@sistema-redespachos/shared`.
+   - El JS emitido de `functions` (`import { DomainError, assertTransition, norm } from '@sistema-redespachos/shared'`) se ejecutó con Node puro y devolvió `TRANSICION_INVALIDA:CORDOBA`.
+
+Verificación final de la rama: `pnpm lint`, `pnpm typecheck`, `pnpm test` (470 tests) y `pnpm build` en verde; `checkTmsFile` sobre el archivo real sigue en 538 filas y 0 errores de formato.
+
+**Hallazgos abiertos (no los cubre este FIX):**
+- **El orden de CI rompe `motor`/`functions`.** `ci:run` y el workflow corren `typecheck` antes de `build`. Sin `packages/shared/dist` (está en `.gitignore`), `pnpm typecheck` falla en `motor` con `TS2307: Cannot find module '@sistema-redespachos/shared'`; con `shared` construido primero, pasa. Hace falta que CI construya `shared` antes de `typecheck` y de `test`, o que el typecheck de `motor` y `functions` resuelva `shared` por sus fuentes. Es de `.github` / raíz: va como `CR`.
+- **`pnpm build` de `motor` y `functions` no emite nada.** Heredan `noEmit: true` del `tsconfig.json` raíz y no lo anulan, así que ni `packages/motor/dist` ni `apps/functions/lib` existen tras el build. `shared` ya lo arregla con `noEmit: false`; `functions` necesita lo mismo para deployar.
+- **Deploy de `functions` con `workspace:*`.** `firebase.json` despliega `apps/functions` como carpeta; el `workspace:*` no lo resuelve `npm` en el deploy. Va a requerir empaquetar `shared` (bundler o `pnpm deploy`) en el ticket de deploy.

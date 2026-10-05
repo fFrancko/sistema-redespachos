@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { importBatchSchema } from './importBatches';
+import { importBatchSchema } from './importBatches.js';
 
 const valid = {
   sucursal_id: 'SUCURSAL NORTE',

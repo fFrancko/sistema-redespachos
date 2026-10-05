@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { norm, normProvincia, variantId } from './normalize';
+import { norm, normProvincia, variantId } from './normalize.js';
 
 describe('norm', () => {
   it.each([

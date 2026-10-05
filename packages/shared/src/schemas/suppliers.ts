@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { supplierStatusSchema } from '../enums';
-import { controlFieldsShape, emailListSchema, percentSchema, refSchema } from '../primitives';
+import { supplierStatusSchema } from '../enums.js';
+import { controlFieldsShape, emailListSchema, percentSchema, refSchema } from '../primitives.js';
 
 const CUIT_WEIGHTS = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2] as const;
 

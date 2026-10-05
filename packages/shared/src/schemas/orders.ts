@@ -5,8 +5,8 @@ import {
   orderStatusSchema,
   quoteOriginSchema,
   responseSchema,
-} from '../enums';
-import { discardReasonSchema, observationCodeSchema, rowErrorCodeSchema } from '../errors';
+} from '../enums.js';
+import { discardReasonSchema, observationCodeSchema, rowErrorCodeSchema } from '../errors.js';
 import {
   centsSchema,
   cpSchema,
@@ -16,7 +16,7 @@ import {
   positiveDecSchema,
   refSchema,
   timestampSchema,
-} from '../primitives';
+} from '../primitives.js';
 
 // Columnas de la plantilla de importación que usa el sistema (§2.4). Es lo que produce el parser del TMS.
 // Las demás columnas de las 47 van tal cual al mapa `origen_tms`, con su nombre snake_case.
