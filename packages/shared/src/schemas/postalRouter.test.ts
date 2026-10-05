@@ -28,6 +28,36 @@ describe('canalizador_cp', () => {
   ])('rechaza %s', (_label, override) => {
     expect(postalRouterEntrySchema.safeParse({ ...valid, ...override }).success).toBe(false);
   });
+
+  it('D34: rechaza cobertura_qx=true con subzona="SIN COBERTURA"', () => {
+    expect(
+      postalRouterEntrySchema.safeParse({
+        ...valid,
+        subzona: 'SIN COBERTURA',
+        cobertura_qx: true,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('D34: rechaza cobertura_qx=false con subzona con cobertura', () => {
+    expect(
+      postalRouterEntrySchema.safeParse({
+        ...valid,
+        subzona: 'SUBZONA UNO',
+        cobertura_qx: false,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('D34: acepta cobertura_qx robusto con "Sin cobertura " (con espacios)', () => {
+    expect(
+      postalRouterEntrySchema.safeParse({
+        ...valid,
+        subzona: 'Sin cobertura ',
+        cobertura_qx: false,
+      }).success,
+    ).toBe(true);
+  });
 });
 
 describe('solicitudes_cp', () => {

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { batchStatusSchema } from '../enums.js';
-import { dateSchema } from '../primitives.js';
+import { dateSchema, refSchema, timestampSchema } from '../primitives.js';
 
 const countSchema = z.number().int().nonnegative();
 
@@ -15,5 +15,7 @@ export const importBatchSchema = z.object({
   sin_cobertura: countSchema,
   cobertura_qx: countSchema,
   estado: batchStatusSchema,
+  importado_por: refSchema,
+  importado_en: timestampSchema,
 });
 export type ImportBatch = z.infer<typeof importBatchSchema>;

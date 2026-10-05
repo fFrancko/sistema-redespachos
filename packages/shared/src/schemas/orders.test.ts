@@ -37,6 +37,7 @@ const validOrder = {
   ...validContext,
   cp_destino_norm: '1406',
   provincia_destino_norm: 'BUENOS AIRES',
+  localidad_destino_norm: 'LOCALIDAD UNO',
   estado: 'VALIDADO',
   errores: [],
 };
@@ -273,6 +274,63 @@ describe('pedidos validados', () => {
       orderSchema.safeParse({
         ...validOrder,
         alternativas: [{ ...alternative, neto: '100' }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('D34: rechaza cp_destino_norm derivado incorrectamente', () => {
+    expect(
+      orderSchema.safeParse({
+        ...validOrder,
+        cp_destino_norm: '1407', // distinto de codigo_postal '1406'
+      }).success,
+    ).toBe(false);
+  });
+
+  it('D34: rechaza provincia_destino_norm derivada incorrectamente', () => {
+    expect(
+      orderSchema.safeParse({
+        ...validOrder,
+        provincia_destino_norm: 'CORDOBA', // distinto de provincia 'BUENOS AIRES'
+      }).success,
+    ).toBe(false);
+  });
+
+  it('D34: rechaza localidad_destino_norm derivada incorrectamente', () => {
+    expect(
+      orderSchema.safeParse({
+        ...validOrder,
+        localidad_destino_norm: 'OTRA LOCALIDAD', // distinto de localidad 'LOCALIDAD UNO'
+      }).success,
+    ).toBe(false);
+  });
+
+  it('D34: acepta provincia con alias RIOJA → LA RIOJA', () => {
+    expect(
+      orderSchema.safeParse({
+        ...validOrder,
+        provincia: 'RIOJA',
+        provincia_destino_norm: 'LA RIOJA',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('D34: acepta provincia con alias CABA → BUENOS AIRES', () => {
+    expect(
+      orderSchema.safeParse({
+        ...validOrder,
+        provincia: 'CABA',
+        provincia_destino_norm: 'BUENOS AIRES',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('D34: rechaza provincia RIOJA con norm() a secas', () => {
+    expect(
+      orderSchema.safeParse({
+        ...validOrder,
+        provincia: 'RIOJA',
+        provincia_destino_norm: 'RIOJA',
       }).success,
     ).toBe(false);
   });

@@ -48,14 +48,55 @@ describe('solicitudes_acceso', () => {
     nombre: 'Nuevo Usuario',
     estado: 'PENDIENTE',
     creado_en: new Date(),
+    resuelto_por: null,
+    resuelto_en: null,
   };
 
   it('acepta una solicitud válida', () => {
     expect(accessRequestSchema.safeParse(valid).success).toBe(true);
   });
 
-  it('rechaza uid vacío y estado desconocido', () => {
+  it('acepta APROBADA y RECHAZADA con campos resuelto_*', () => {
+    expect(
+      accessRequestSchema.safeParse({
+        ...valid,
+        estado: 'APROBADA',
+        resuelto_por: 'uid-admin',
+        resuelto_en: new Date(),
+      }).success,
+    ).toBe(true);
+    expect(
+      accessRequestSchema.safeParse({
+        ...valid,
+        estado: 'RECHAZADA',
+        resuelto_por: 'uid-admin',
+        resuelto_en: new Date(),
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rechaza PENDIENTE con resuelto_* no nulos', () => {
+    expect(
+      accessRequestSchema.safeParse({
+        ...valid,
+        estado: 'PENDIENTE',
+        resuelto_por: 'uid-admin',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rechaza APROBADA/RECHAZADA sin resuelto_*', () => {
+    expect(
+      accessRequestSchema.safeParse({
+        ...valid,
+        estado: 'APROBADA',
+        resuelto_por: null,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rechaza uid vacío y estados desconocidos', () => {
     expect(accessRequestSchema.safeParse({ ...valid, uid: '' }).success).toBe(false);
-    expect(accessRequestSchema.safeParse({ ...valid, estado: 'APROBADA' }).success).toBe(false);
+    expect(accessRequestSchema.safeParse({ ...valid, estado: 'RESUELTA' }).success).toBe(false);
   });
 });

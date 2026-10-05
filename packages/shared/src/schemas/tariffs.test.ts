@@ -8,6 +8,8 @@ describe('tarifarios', () => {
     vigencia_desde: '2026-10-01',
     vigencia_hasta: null,
     estado: 'BORRADOR',
+    creado_por: 'uid-admin',
+    creado_en: new Date(),
   };
 
   it('acepta un borrador sin datos de publicación y un tarifario publicado', () => {
@@ -36,6 +38,18 @@ describe('tarifarios', () => {
     ['vigencia_hasta ausente', { vigencia_hasta: undefined }],
   ])('rechaza %s', (_label, override) => {
     expect(tariffSchema.safeParse({ ...valid, ...override }).success).toBe(false);
+  });
+
+  it('D35: rechaza la falta de creado_por', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { creado_por, ...noAuthor } = valid;
+    expect(tariffSchema.safeParse(noAuthor).success).toBe(false);
+  });
+
+  it('D35: rechaza la falta de creado_en', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { creado_en, ...noTimestamp } = valid;
+    expect(tariffSchema.safeParse(noTimestamp).success).toBe(false);
   });
 });
 
@@ -149,5 +163,14 @@ describe('reglas_tarifa', () => {
   it('no hereda campos de la herramienta externa (precio_kg_base / precio_m3_base)', () => {
     expect('precio_kg_base' in tariffRuleSchema.innerType().shape).toBe(false);
     expect('precio_m3_base' in tariffRuleSchema.innerType().shape).toBe(false);
+  });
+
+  it('D34: rechaza variante_id derivado incorrectamente', () => {
+    expect(
+      tariffRuleSchema.safeParse({
+        ...weightRule,
+        variante_id: 'INCORRECTO', // debe ser {cp}|{norm(localidad)}|{norm(zona)}
+      }).success,
+    ).toBe(false);
   });
 });

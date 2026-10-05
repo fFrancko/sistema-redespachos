@@ -51,7 +51,7 @@ function buildColumn(spec: ColumnSpec): TmsColumn {
   };
 }
 
-// Las 47 columnas de §7.4, en orden.
+// Las 47 columnas de §7.4, en orden. Fuente de verdad: D37.
 const TMS_COLUMN_SPECS: readonly ColumnSpec[] = [
   { header: 'Código de Empresa' },
   { header: 'Código ERP' },

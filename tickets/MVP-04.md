@@ -218,19 +218,19 @@ Cada una lleva el supuesto con el que avancé. Las contradicciones que ya resolv
 **Campos sin tipo u obligatoriedad explícita (supuestos tomados, para que revises)**
 
 6. `usuarios`: `email`, `nombre`, `rol`, `sucursales` (`ref[]`), `estado` (`ACTIVO | INACTIVO`) y los 4 campos de control. §2.1 solo dice "Perfil, rol, sucursales asignadas, estado".
-7. `solicitudes_acceso`: `uid`, `email`, `nombre`, `estado` (`PENDIENTE | RESUELTA`) y `creado_en`. §3.1 no lista campos.
+7. `solicitudes_acceso`: `uid`, `email`, `nombre`, `estado` (`PENDIENTE | RESUELTA`) y `creado_en`. §3.1 no lista campos. **[Actualizado en la Ola 0, D35: `estado` es `PENDIENTE | APROBADA | RECHAZADA`, con `resuelto_por` y `resuelto_en` nulos si está `PENDIENTE` y obligatorios si no.]**
 8. `indice_cuit`: solo `id_proveedor` (el CUIT es el id del documento).
 9. `tarifarios`: `archivo_origen_path`, `publicado_por` y `publicado_en` opcionales, porque un borrador todavía no se publicó. `vigencia_hasta` es nullable (clave obligatoria, valor `null` si es la última).
-10. `reglas_tarifa`: `kg_min`, `kg_max`, `m3_min` y `m3_max` son nullable y obligan a `null` explícito en el tipo que no corresponde. `variante_id` es obligatorio pero no se verifica que coincida con `variantId(...)` (§2.3 dice "calculado al guardar": lo hace la callable). `norm()` de provincias y localidades tampoco se verifica en el esquema.
+10. `reglas_tarifa`: `kg_min`, `kg_max`, `m3_min` y `m3_max` son nullable y obligan a `null` explícito en el tipo que no corresponde. `variante_id` es obligatorio pero no se verifica que coincida con `variantId(...)` (§2.3 dice "calculado al guardar": lo hace la callable). `norm()` de provincias y localidades tampoco se verifica en el esquema. **[Actualizado en la Ola 0, D34: el esquema sí verifica que `variante_id` coincida con `variantId(...)`.]**
 11. `emails_salida`: `adjunto_path` y `proforma_id` opcionales, porque el outbox también sirve a los avisos internos (§3.1: email a los `ADMIN`; §3.4: email a CDG) que no tienen proforma ni adjunto.
 12. `reportes_liquidacion` y `reportes_oc`: `archivo_path` opcional (el reporte nace `PROCESANDO` y el archivo aparece al pasar a `LISTO`, §3.5). `reportes_oc.estado` no tiene valores en §2.5: uso los de `reportes_liquidacion` (`PROCESANDO | LISTO`).
 13. `parametros`: `tolerancia_volumen_pct` es `dec` en [0, 100] (la arquitectura escribe `5`); `oc_constantes.cotizacion` y `preciosobre` son `dec` (regla 1: ningún número no entero como `number`); `cantidad_por_pedido` es `int` > 0. No hay valores por defecto en el esquema.
 14. `auditoria.antes` y `despues` son `record | null` con clave obligatoria (una alta no tiene `antes`). `reportes_liquidacion.filtros` es `record(string, unknown)`.
-15. `lotes_importacion` no lleva campo de creador: §2.5 no lo lista, aunque §2.1 dice "un archivo importado por un usuario".
+15. `lotes_importacion` no lleva campo de creador: §2.5 no lo lista, aunque §2.1 dice "un archivo importado por un usuario". **[Actualizado en la Ola 0, D35: lleva `importado_por` e `importado_en`.]**
 16. `pedidos.cotizacion`: `tarifario_id`, `variante_id` y `variante` son nullable y solo son obligatorios si `origen = MOTOR`, porque §3.8 dice que la cotización manual exige "proveedor, montos y justificación". `regla_peso_id` y `regla_volumen_id` son nullable (una candidata sin reglas de un tipo aporta 0, §3.3 paso 3).
 17. `pedidos.canalizador`: `zona`, `cabecera`, `subzona` y `zona_tarifario` son nullable, porque con `cobertura_qx = DESCONOCIDA` el CP no está en el canalizador y no hay datos.
 18. **Pedidos `CON_ERROR`: dos esquemas.** §2.4 y §3.7 dicen que una fila inválida se persiste con `estado = CON_ERROR` y `errores[]`, pero los campos que fallaron (peso en 0, cabecera vacía) no pueden cumplir las reglas de `pedidos` (`peso_kgs > 0`). Solución: `orderSchema` (VALIDADO en adelante, estricto, `errores` vacío), `invalidOrderSchema` (`CON_ERROR`, campos de importación opcionales, `errores` con al menos uno) y `orderDocumentSchema` (unión de ambos, que es el que usa la colección `pedidos`). `parseTmsRow` nunca deja en `datos` un valor que falló. Consecuencia para MVP-19: un `CON_ERROR` no conserva el valor original inválido (p. ej. el peso en 0), así que la exportación de errores a xlsx dependerá del archivo original en Storage.
-19. `pedidos.fecha_aceptacion`: el índice `pedidos(estado, fecha_aceptacion)` de §2.5 y el filtro de §3.5 la usan como campo del pedido, pero §2.4 solo la lista dentro de `confirmacion`. No agregué el campo (regla 9). Mirar en MVP-07 y MVP-22.
+19. `pedidos.fecha_aceptacion`: el índice `pedidos(estado, fecha_aceptacion)` de §2.5 y el filtro de §3.5 la usan como campo del pedido, pero §2.4 solo la lista dentro de `confirmacion`. No agregué el campo (regla 9). Mirar en MVP-07 y MVP-22. **[Resuelto en la Ola 0, D31: el campo está en la raíz del pedido.]**
 20. **Parser: criterios que la arquitectura no fija.**
     - `Volumen M3` vacío: `VOLUMEN_INVALIDO` (§3.2 solo lo dice de `PESO_INVALIDO`).
     - `Cantidad de Bultos` en 0, decimal o negativo: `FORMATO_INVALIDO`, porque no hay un código específico.
@@ -239,6 +239,7 @@ Cada una lleva el supuesto con el que avancé. Las contradicciones que ya resolv
     - Las columnas de `origen_tms` con fecha (`Fecha de Liquidación`, `Fecha Status`, `Fecha de Alta`, `Fecha de Carta de Porte`) se validan solo si traen valor; los importes de `origen_tms` se guardan como texto sin validar, como dice §2.4.
     - Encabezados: obligatorias son las 12 columnas con "Oblig. = sí" de §2.4. Repetidos son `FORMATO_INVALIDO` de archivo; los desconocidos se listan y se ignoran.
 21. **Las 47 columnas de §7.4 no están en el repo** (la arquitectura solo las referencia y `docs/documentacion-funcional.md` no existe). Usé el orden y los nombres de este ticket.
+22. **`orderDocumentSchema` es una `z.union` sin discriminador (Ola 0).** Si un pedido que no es `CON_ERROR` falla un `superRefine`, el error de la unión mezcla las ramas y oculta el mensaje de D34. Supuesto: no se cambia la API en la Ola 0. Pendiente de decisión: discriminar por `estado` antes de parsear, o que los consumidores usen `orderSchema` o `invalidOrderSchema` según el `estado`. Mirar en MVP-17 y MVP-19.
 
 ---
 
