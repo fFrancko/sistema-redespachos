@@ -704,7 +704,7 @@ El autor de MVP-04 debe emitir un PR de corrección `fix(shared): solucionar hal
 1. **Consumo de `packages/shared` (Hallazgo 1):** Aprobar la inclusión de `"noEmit": false` en `packages/shared/tsconfig.json` y la configuración de `"main"`, `"types"` y `"exports"` en su `package.json` para desbloquear MVP-13.
 2. **Normalización de Nombres de Join (Hallazgo 3):** Definir si para MVP-13 se conserva el mapeo asimétrico (`pedidos.codigo_postal` contra `reglas_tarifa.codigo_postal_destino`) o si se realiza un CR para normalizar `pedidos.codigo_postal_destino`.
 3. **Validación de Campos Derivados (Hallazgo 4):** Definir si `variante_id`, `cobertura_qx` y los campos `_norm` deben ser estrictamente validados en el esquema Zod mediante `superRefine`, o si se confía la consistencia a la lógica de las callables/triggers.
-4. **Doble Esquema de Pedidos (Supuesto 18):** Ratificar la solución `orderSchema` / `invalidOrderSchema` y la estrategia de leer el archivo original en Storage para exportar filas con error en MVP-19.
+4. **Doble Esquema de Pedidos (Supuesto 18):** Ratificar  la solución `orderSchema` / `invalidOrderSchema` y la estrategia de leer el archivo original en Storage para exportar filas con error en MVP-19.
 5. **Campos de Control Globales (Hallazgo 6 y Supuesto 15):** Determinar si `lotes_importacion`, `tarifarios` y `solicitudes_acceso` deben recibir campos homogéneos de auditoría (`creado_por`, `creado_en`).
 6. **Ampliación de D28:** Confirmar en la documentación de arquitectura la normalización de importes sin cero entero (`.dd` → `0.dd`) para todas las columnas numéricas del TMS.
 
