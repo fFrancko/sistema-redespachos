@@ -51,18 +51,21 @@ La columna Origen dice de dónde sale cada decisión: **Negocio #n** es una reso
 | D15 | Provincia y localidad de origen se resuelven desde `Código Postal Origen` en el canalizador. `Zona Destino` y `Cabecera` importadas se guardan sin compararlas: sus vocabularios difieren de los del canalizador. Solo se compara la provincia (normalizada) y, si difiere, se agrega la observación `DESTINO_DIFIERE_TMS`. Nunca bloquea. | B0 |
 | D16 | Se envía un solo email por proveedor y lote. El cuerpo resume el lote y el adjunto (xlsx o csv) detalla cada pedido con importe y tarifa usada. Estructura, columnas del adjunto, CC y CCO son parametrizables. | Negocio #5 |
 | D17 | La proforma es un documento propio. Atención al Proveedor registra la respuesta por proforma, con evidencia obligatoria y opción de rechazar pedidos puntuales. Quien envió la proforma no puede registrar su respuesta. | Negocio #6 |
-| D18 | `fecha_aceptacion` es la fecha de la respuesta del proveedor que informa Atención al Proveedor al registrarla (no puede ser futura). | Arquitectura |
+| D18 | `fecha_aceptacion` es la fecha de la respuesta del proveedor que informa Atención al Proveedor al registrarla (no puede ser futura). Se guarda en la raíz del pedido (D31). | Arquitectura |
 | D19 | El reporte de liquidación (§7.8) lo confirman y generan analistas o BackOffice. Trae las 47 columnas más `id_proveedor`, `razon_social`, `cuit`, `criterio`, `neto`, `iva`, `total` y `fecha_aceptacion`, y pasa los pedidos a `LISTO_PARA_OC`. | Negocio #7 y Doc. funcional |
 | D20 | El reporte de OC (§7.9) lo genera Administración desde `LISTO_PARA_OC`: una OC por proveedor y reporte, una línea por pedido, `precio` = total con IVA. Los pedidos pasan a `LIQUIDADO`. | Doc. funcional y Arquitectura |
 | D21 | Roles: `ADMIN`, `ATENCION_PROVEEDOR`, `ANALISTA`, `BACKOFFICE` y `ADMINISTRACION`; `COMERCIAL` se suma en la Fase 2. `ADMIN` incluye a Control de Gestión (CDG). | Negocio #6 |
 | D22 | Firebase en plan Blaze vinculado a la cuenta de facturación de GCC, con alerta de presupuesto. Login con Google Workspace. | Decisión ya tomada en la v1 |
 | D23 | La venta (Fase 2) usa **dos tarifarios y dos motores**: *Encomienda* (hasta 1 m³, hasta 50 kg y un solo bulto) y *Logística* (todo lo que no cae en Encomienda: más bultos o pallets). Una función `clasificarServicio(pedido)` decide cuál aplica. La comparación costo/venta se hace en neto. El motor de Encomienda busca por `cabecera_origen-cabecera_destino-subzona-rango_kg`; el de Logística se define con Comercial. | Negocio y Arquitectura |
-| D24 | La clave de cruce del destino es el **código postal de 4 dígitos** (`codigo_postal_destino`). `zona_destino` y `localidad_destino` del tarifario son etiquetas del proveedor. Un CP puede repetirse para distintas localidades, zonas y hasta provincias; cada combinación (CP, localidad, zona) es una **variante** con su propio `variante_id`, plazo y precios. Si la provincia del pedido coincide con la de alguna variante, se descartan las variantes de otras provincias. | B0 y Negocio |
+| D24 | La clave de cruce del destino es el **código postal de 4 dígitos** (`codigo_postal_destino`). `zona_destino` y `localidad_destino` del tarifario son etiquetas del proveedor y no se cruzan con el canalizador, pero ambas son obligatorias porque componen `variante_id` (D30). Un CP puede repetirse para distintas localidades, zonas y hasta provincias; cada combinación (CP, localidad, zona) es una **variante** con su propio `variante_id`, plazo y precios. Si la provincia del pedido coincide con la de alguna variante, se descartan las variantes de otras provincias. | B0 y Negocio |
 | D25 | Las coberturas son las de QX Logística (matriz del canalizador) o las de los expresos con tarifario cargado. `SIN_COBERTURA` solo si el pedido no tiene ninguna opción. Un pedido con cobertura QX pasa a `COBERTURA_QX` y, si hay expresos con tarifa, también muestra sus opciones para elegir una. En el MVP la cobertura QX no lleva precio: el precio de venta llega con el motor de la Fase 2. | Negocio |
 | D26 | `Codigo de Expreso` importado es el resultado de la asignación manual de hoy. Se guarda en `expreso_manual` y en `origen_tms`; no interviene en la cotización. Sirve para el informe de modo sombra y para medir cuánto se diversifica la asignación. | Negocio |
 | D27 | Un CP de pedido o de tarifario que no existe en el canalizador no bloquea: el pedido se cotiza igual por CP, lleva la observación `CP_NO_EN_CANALIZADOR` y se crea una solicitud a CDG (`solicitudes_cp`) con aviso por email y contador en la UI. | Negocio |
 | D28 | El formato del TMS es fijo: encabezados con `:` final que se normalizan (`trim`, sin `:`, sin tildes, minúsculas) y se mapean a los nombres de §7.4; montos con coma de miles y punto decimal (`349,731.72`); fechas `dd/MM/yyyy` o `dd/MM/yyyy HH:mm:ss`; CP de 4 dígitos. | Negocio y B0 |
 | D29 | El Excel maestro de tarifas admite varios proveedores en el mismo archivo. La importación crea un borrador por proveedor presente; el proveedor del maestro se identifica por `id_proveedor` o por sus `alias`. | Negocio |
+| D30 | `localidad_destino` de `reglas_tarifa` es **obligatoria**. Sigue siendo una etiqueta del proveedor y no es clave de cruce, pero compone `variante_id` y sin ella la variante es ambigua. Una fila sin `localidad_destino` no se importa y el tarifario no se publica: la callable devuelve `TARIFARIO_INVALIDO` por dato obligatorio faltante (D3). | Negocio |
+| D31 | `fecha_aceptacion` se guarda en la **raíz** del pedido, no dentro de `confirmacion`, para que el índice `pedidos(estado, fecha_aceptacion)` y los filtros de §3.5 y §7.8 operen sobre un campo de primer nivel. `confirmacion` conserva `respuesta` y `respuesta_id`. | Negocio |
+| D32 | Al pasar de `CON_ERROR` a `CANCELADO` el pedido **conserva sus `errores[]`**, por trazabilidad de por qué se canceló. Un pedido `CANCELADO` puede, por lo tanto, tener `errores[]` no vacío y campos de importación ausentes o inválidos; el contrato de `pedidos` debe admitir ese documento. | Negocio |
 
 ## 1. Stack tecnológico recomendado
 
@@ -154,7 +157,7 @@ Los datos del proveedor (IVA, seguro, condición de pago, emails, alias) se carg
 | `tarifario_id`, `id_proveedor` | ref | sí | Versión y proveedor de la fila. |
 | `tipo_regla` | enum | sí | `PESO` · `VOLUMEN`. |
 | `provincia_origen`, `localidad_origen` | string | provincia sí | `*` = cualquier origen. Normalizadas con `norm()`. Ver precedencia en §3.3. |
-| `provincia_destino`, `localidad_destino` | string | provincia sí | Etiquetas de la variante. Se usan para descartar variantes de otras provincias y para mostrar la opción; no son clave de cruce. |
+| `provincia_destino`, `localidad_destino` | string | sí | Etiquetas de la variante. Se usan para descartar variantes de otras provincias y para mostrar la opción; no son clave de cruce. Ambas son obligatorias: `localidad_destino` compone `variante_id`, y una fila sin ella no se importa (`TARIFARIO_INVALIDO`, ver D30 y D3). |
 | `codigo_postal_destino` | string | sí | 4 dígitos. Clave de cruce con el pedido. |
 | `zona_destino` | string | sí | Zona del proveedor (p. ej. "Ramal Norte", "Zona facturación 2"). Informativa; no se cruza con el canalizador. |
 | `plazo_estimado_dias` | int | no | Tiempo estimado de entrega de la variante. Se muestra en las opciones. |
@@ -217,10 +220,10 @@ El resto de las 47 columnas (Código de Empresa, Código ERP, Tipo de Operación
 | Contexto | `sucursal_id`, `lote_id`, `importado_por`, `importado_en` | ref / timestamp |
 | Normalización | `cp_destino_norm`, `provincia_destino_norm`, `provincia_origen`, `localidad_origen`, `observaciones[]` | string / array |
 | Canalizador | `canalizador` = `{zona, cabecera, subzona, zona_tarifario, cobertura_qx: SI\|NO\|DESCONOCIDA}`; `cobertura_qx` es `NO` cuando `subzona` es `SIN COBERTURA` y `DESCONOCIDA` si el CP no está en el canalizador | map |
-| Estado | `estado` (ver §3.7), `errores[]` = `{campo, codigo, mensaje}` | enum / array |
+| Estado | `estado` (ver §3.7), `errores[]` = `{campo, codigo, mensaje}`. Los `errores[]` de un pedido `CON_ERROR` se conservan al pasar a `CANCELADO` (D32) | enum / array |
 | Cotización elegida | `cotizacion` = `{id_proveedor, tarifario_id, variante_id, variante: {localidad, zona, plazo_estimado_dias}, regla_peso_id, regla_volumen_id, criterio: PESO\|VOLUMEN, detalle_tarifa, costo_peso, costo_volumen, flete, colecta, seguro, neto, iva_porcentaje, iva, total, origen: MOTOR\|MANUAL, justificacion?, fecha_referencia, motor_version, calculado_en}` | map; montos en cents |
 | Alternativas | `alternativas[]` = `{id_proveedor, variante_id, variante, criterio, neto, total}` ordenadas de menor a mayor total (máximo 20) y `descartes[]` = `{id_proveedor, variante_id?, motivo}` | array |
-| Confirmación | `proforma_id`, `confirmacion` = `{respuesta: ACEPTA\|RECHAZA, fecha_aceptacion, respuesta_id}` | ref / map |
+| Confirmación | `fecha_aceptacion` (date, en la raíz del pedido; ver D31), `proforma_id`, `confirmacion` = `{respuesta: ACEPTA\|RECHAZA, respuesta_id}` | date / ref / map |
 | Liquidación | `reporte_liquidacion_id`, `reporte_oc_id` | ref |
 
 La cotización es una **foto**: guarda los valores con los que se calculó, así un cambio posterior de tarifa no altera pedidos ya valorizados. `detalle_tarifa` es el texto legible que ve el proveedor en la proforma, p. ej. `PESO 10–50 kg: tramo $1.600,00`.
@@ -410,7 +413,7 @@ Las constantes salen de `parametros.oc_constantes` y todo el mapeo vive en un ú
 
 | Estado | Llega desde | Disparador | Puede pasar a |
 | --- | --- | --- | --- |
-| `CON_ERROR` | Importación | Fila inválida | `CANCELADO` (se corrige y se reimporta) |
+| `CON_ERROR` | Importación | Fila inválida | `CANCELADO` (se corrige y se reimporta; conserva sus `errores[]`, D32) |
 | `VALIDADO` | Importación | Fila válida | `VALORIZADO`, `COBERTURA_QX`, `SIN_COBERTURA`, `CANCELADO` |
 | `SIN_COBERTURA` | `VALIDADO`, `COBERTURA_QX`, `VALORIZADO`, `EN_DISPUTA` | Motor sin candidata válida ni cobertura QX | `VALORIZADO` (manual o al revalorizar), `COBERTURA_QX` (al revalorizar), `CANCELADO` |
 | `COBERTURA_QX` | `VALIDADO`, `SIN_COBERTURA`, `VALORIZADO`, `EN_DISPUTA` | Motor con cobertura QX (con o sin opciones de expreso) | `VALORIZADO` (elegir una opción de expreso, cotizar a mano, o revalorizar tras cargar un tarifario), `SIN_COBERTURA` (al revalorizar), `CANCELADO` |
@@ -423,7 +426,7 @@ Las constantes salen de `parametros.oc_constantes` y todo el mapeo vive en un ú
 | `LIQUIDADO` | `LISTO_PARA_OC` | Incluido en un reporte de OC | Final |
 | `CANCELADO` | `CON_ERROR`, `VALIDADO`, `SIN_COBERTURA`, `COBERTURA_QX`, `VALORIZADO`, `ERROR_COMUNICACION`, `EN_DISPUTA` | Acción del analista | Final |
 
-Las transiciones viven en `packages/shared` como tabla única; cualquier cambio de estado fuera de ella se rechaza con `TRANSICION_INVALIDA`. "Tarifa en Disputa" y "En Disputa" del documento funcional son el mismo estado, `EN_DISPUTA`. La UI muestra las etiquetas del documento funcional: "Pendiente de Confirmación", "En Disputa", "Aceptado por Proveedor", "Listo para generar OC", "Sin Cobertura / Requiere Cotización Manual" y "Error de Comunicación"; `COBERTURA_QX` se muestra como "Cobertura QX (sin expreso)". Un pedido en este estado muestra también las opciones de expreso, si las hay.
+Las transiciones viven en `packages/shared` como tabla única; cualquier cambio de estado fuera de ella se rechaza con `TRANSICION_INVALIDA`. Un pedido que llega a `CANCELADO` desde `CON_ERROR` conserva sus `errores[]` y puede tener campos de importación ausentes o inválidos (D32): el esquema de `pedidos` tiene que admitir esa combinación de `estado` y `errores[]`. "Tarifa en Disputa" y "En Disputa" del documento funcional son el mismo estado, `EN_DISPUTA`. La UI muestra las etiquetas del documento funcional: "Pendiente de Confirmación", "En Disputa", "Aceptado por Proveedor", "Listo para generar OC", "Sin Cobertura / Requiere Cotización Manual" y "Error de Comunicación"; `COBERTURA_QX` se muestra como "Cobertura QX (sin expreso)". Un pedido en este estado muestra también las opciones de expreso, si las hay.
 
 ### 3.8 Contratos de Functions del MVP
 
