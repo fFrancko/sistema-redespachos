@@ -708,3 +708,29 @@ El autor de MVP-04 debe emitir un PR de corrección `fix(shared): solucionar hal
 5. **Campos de Control Globales (Hallazgo 6 y Supuesto 15):** Determinar si `lotes_importacion`, `tarifarios` y `solicitudes_acceso` deben recibir campos homogéneos de auditoría (`creado_por`, `creado_en`).
 6. **Ampliación de D28:** Confirmar en la documentación de arquitectura la normalización de importes sin cero entero (`.dd` → `0.dd`) para todas las columnas numéricas del TMS.
 
+
+---
+
+## Verificación de correcciones
+
+- **Fecha:** 5 de octubre de 2026.
+- **Modalidad:** cierre firmado por Franco, sin re-auditoría de Gemini (decisión de Franco, pregunta P-04 de `docs/ola-0/informe-validacion.md`). La verificación técnica la hizo Claude sobre el commit `80d4735` en un clon limpio: install congelado, `Build shared`, lint, typecheck, 490 tests y build en verde.
+- **Correcciones revisadas:** PR #18 y #19 (`74917ba` a `473e531`).
+
+| # | Severidad original | Estado | Evidencia |
+| --- | --- | --- | --- |
+| 1 | Bloqueante | **RESUELTO** | `packages/shared` emite `dist/` sin tests, declara `main`, `types` y `exports`, compila con `NodeNext`; el `dist` se importa con Node puro (117 exports) y `motor` y `functions` lo declaran como `workspace:*`. |
+| 2 | Mayor | **RESUELTO** (D31) | `fecha_aceptacion` en la raíz de `orderSchema` (`orders.ts` l.173), obligatoria con `confirmacion`. |
+| 3 | Mayor | **RESUELTO** (D33) | El cruce de destino usa solo `cp_destino_norm`, `provincia_destino_norm` y el nuevo `localidad_destino_norm`; los nombres crudos del TMS se conservan por decisión. |
+| 4 | Mayor | **RESUELTO** (D34) | `superRefine` en `variante_id` (`tariffs.test.ts` l.168), `cobertura_qx` (`postalRouter.test.ts` l.32) y los tres `_norm` de `pedidos`. |
+| 5 | Mayor | **RESUELTO** (D30) | `localidad_destino` obligatoria (`tariffs.ts` l.44). |
+| 6 | Menor | **ACEPTADO POR FRANCO** | La arquitectura actualizada incluye `provincia_origen`/`localidad_origen` (§2.4), el máximo de 20 alternativas (§2.4), `referencias` (§2.5) y los campos de `usuarios` (§2.5). |
+| 7 | Menor | **DIFERIDO a MVP-13** | `packages/motor/src/schemas/` sigue como placeholder; MVP-13 lo elimina. |
+| 8 | Menor | **RESUELTO** | Tests de `0.005 → 1`, `0.0049 → 0`, `718.3743 → 71837` y `1250.50005 → 1250.5001` en `primitives.test.ts`. |
+| 9 | Menor | **RESUELTO** | El CUIT del Banco Nación se reemplazó por `20001555554` (sintético, dígito verificador válido). |
+
+**Hallazgo nuevo, fuera de esta auditoría:** D36 se agregó a la arquitectura después de este informe y no está implementado (`origen_tms` guarda 28 de las 47 columnas). Se sigue como H-01 en `docs/ola-0/informe-validacion.md` y se resuelve con un `CR` de `shared` antes de MVP-17. No reabre este veredicto.
+
+**Veredicto final: APROBADO CON OBSERVACIONES.** `packages/shared` queda congelado (regla 11 de `AGENTS.md`); se modifica solo con `CR`.
+
+Firmado: Franco Aranda (decisión de cierre) · Claude (verificación técnica).

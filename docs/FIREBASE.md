@@ -6,7 +6,7 @@ Firebase Firestore + Emulator Suite para desarrollo local. El emulador permite p
 
 ## Requisitos previos
 
-- **Node.js** ≥ 20 (ver `package.json`)
+- **Node.js** 22 (ver `engines` en `package.json` y `docs/CI.md`)
 - **Java** (JRE/JDK 11 o superior) — requerido por Firebase Emulator Suite
   - Windows: descargar desde [oracle.com](https://www.oracle.com/java/technologies/downloads/) o usar `choco install openjdk11`
   - macOS: `brew install openjdk@11`
@@ -40,49 +40,21 @@ La app se conecta al emulator si `VITE_FIREBASE_EMULATOR=true` en `.env.local`.
 
 ## Estructura de colecciones
 
-Firestore MVP Phase 1 cuenta con estas colecciones (stubs):
+Las colecciones de la Fase 1 son las 19 de `docs/arquitectura-v3.md` §2.1. La lista y los esquemas viven en código, en `packages/shared` (`COLLECTION_NAMES` y `collectionSchemas` en `src/types/firebase.ts` y los esquemas en `src/schemas/`). Esa es la fuente; este documento no las repite para que no se desactualicen.
 
-| Colección | Uso | Campos clave |
-| --- | --- | --- |
-| `usuarios` | Perfil y rol | `uid`, `email`, `rol`, `sucursales[]` |
-| `proveedores` | Expresos y configuración | `id_proveedor`, `razon_social`, `iva_porcentaje`, `aplica_seguro` |
-| `tarifarios` | Versión de tarifas por proveedor | `id_proveedor`, `version`, `vigencia_desde`, `estado` |
-| `reglas_tarifa` | Filas del tarifario (tramos) | `tarifario_id`, `tipo_regla`, `codigo_postal_destino`, `precio_tramo` |
-| `pedidos` | Pedidos importados y cotizados | `nro_pedido`, `estado`, `cotizacion`, `confirmacion` |
-| `canalizador_cp` | Código postal → zona y cobertura | `cp`, `localidad`, `zona`, `cobertura_qx` |
-| `proformas` | Proforma por proveedor y lote | `lote_id`, `id_proveedor`, `totales`, `estado` |
-| `liquidaciones` | Reportes de liquidación | `fecha`, `monto`, `cantidad_pedidos` |
+## Proyectos y deploy
 
-## Deploy a producción
+`.firebaserc` declara `dev` = **`qx-redespachos-dev`** (proyecto real "Sistema Expresos", creado el 5/10/2026) y `prod` = `proyecto-qx-prod`, que **todavía es un nombre provisorio**: el proyecto de prod se crea en el Hito 1B.
 
-### Primer deploy (setup)
-
-```bash
-# Loguear con Google Cloud
-firebase login
-
-# Seleccionar proyecto prod
-firebase use prod
-
-# Deploy Firestore rules
-firebase deploy --only firestore:rules
-```
-
-### Deploy posterior
-
-```bash
-# Desde la rama main o tag de release
-firebase use prod
-firebase deploy --only firestore:rules --project proyecto-qx-prod
-```
+- El deploy de Hosting y Functions a dev lo hace `deploy.yml` (ver `docs/CI.md`). Hoy se omite por falta de secrets, y `apps/functions` todavía no es desplegable (MVP-31).
+- **No despliegues reglas de Firestore ni de Storage a ningún proyecto real, ni a mano.** Las reglas actuales son provisorias (ver abajo). Las reglas por rol y sucursal llegan con MVP-07, con tests en el emulador.
+- Deploy a prod: no existe todavía; va por tag y en un ticket propio.
 
 ## Firestore Security Rules
 
-**Desarrollo (emulator):** `allow read, write: if true` (abierto para testing)
+**Estado actual (provisorio, solo para el emulador):** `allow read, write: if request.auth != null` sobre todas las colecciones. Es **incompatible con producción**: cualquier cuenta autenticada puede leer y escribir todo, y contradice la regla 4 de `AGENTS.md` (el cliente nunca escribe colecciones de negocio). Hay un `CR` propuesto para dejarlas en *deny-all* hasta MVP-07 (H-04).
 
-**Producción (fase actual):** `allow read, write: if request.auth != null` (solo autenticado)
-
-**Fase 2 (MVP-09):** Reglas por rol (ADMIN, ATENCION_PROVEEDOR, ANALISTA, BACKOFFICE, ADMINISTRACION)
+**MVP-07 (carril B):** reglas por rol (`ADMIN`, `ATENCION_PROVEEDOR`, `ANALISTA`, `BACKOFFICE`, `ADMINISTRACION`) y por sucursal, `storage.rules` y `firestore.indexes.json` (hoy `firebase.json` lo referencia pero no existe).
 
 ## Variables de entorno
 
@@ -111,5 +83,4 @@ Firebase CLI detectó que ya hay un emulator corriendo. Detener con Ctrl+C en ot
 
 - [Firebase Emulator Suite](https://firebase.google.com/docs/emulator-suite)
 - [Firestore Local Testing](https://firebase.google.com/docs/firestore/security/test-rules-emulator)
-- [Proyecto Firebase Dev](https://console.firebase.google.com/project/proyecto-qx-dev)
-- [Proyecto Firebase Prod](https://console.firebase.google.com/project/proyecto-qx-prod)
+- [Proyecto Firebase Dev](https://console.firebase.google.com/project/qx-redespachos-dev)
