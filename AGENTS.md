@@ -38,6 +38,7 @@ Si dos fuentes se contradicen, **no decidas**: seguí la de menor número, dejá
 8. **Datos reales:** no se suben al repo ni los Excel/CSV reales de transportes (tarifas: dato comercial) ni pedidos del TMS (destinatarios y direcciones: Ley 25.326). Solo fixtures **sintéticos**, generados con scripts propios. Los datos reales viven fuera del repo y se pasan por argumento. Nada de secretos ni claves en el código.
 9. **Sin inventar:** no agregues campos, estados, códigos de error ni reglas de negocio que no estén en la arquitectura. Si falta algo, preguntá (sección PREGUNTAS del ticket).
 10. **Alcance:** hacé lo que pide el ticket, nada más. Nada de refactors ni mejoras "de paso" fuera de tus archivos.
+11. Ya no modificar más la carpeta y los archivos de `packages/shared`.
 
 ## 5. Flujo por ticket
 1. Leé el ticket y las secciones indicadas.
