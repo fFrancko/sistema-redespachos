@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { cpSchema, refSchema, timestampSchema } from '../primitives.js';
 import { cpRequestOriginSchema, cpRequestStatusSchema } from '../enums.js';
+import { norm } from '../normalize.js';
 
 // Colección `canalizador_cp` (§2.5). Id: `{cp}_{localidad_normalizada}`.
 // `cobertura_qx` es booleano acá (derivado de subzona); en `pedidos.canalizador` es el enum SI | NO | DESCONOCIDA.
@@ -18,12 +19,12 @@ export const postalRouterEntrySchema = z
     version: z.number().int().min(1),
   })
   .superRefine((entry, ctx) => {
-    const expectedCobertura = entry.subzona !== 'SIN COBERTURA';
+    const expectedCobertura = norm(entry.subzona) !== 'SIN COBERTURA';
     if (entry.cobertura_qx !== expectedCobertura) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['cobertura_qx'],
-        message: `cobertura_qx debe ser ${expectedCobertura} (subzona !== "SIN COBERTURA")`,
+        message: `cobertura_qx debe ser ${expectedCobertura} (norm(subzona) !== "SIN COBERTURA")`,
       });
     }
   });

@@ -17,7 +17,7 @@ import {
   refSchema,
   timestampSchema,
 } from '../primitives.js';
-import { norm } from '../normalize.js';
+import { norm, normProvincia } from '../normalize.js';
 
 // Columnas de la plantilla de importación que usa el sistema (§2.4). Es lo que produce el parser del TMS.
 // Las demás columnas de las 47 van tal cual al mapa `origen_tms`, con su nombre snake_case.
@@ -192,11 +192,12 @@ export const orderSchema = orderImportSchema
       });
     }
 
-    if (order.provincia_destino_norm !== norm(order.provincia)) {
+    const expectedProvinciaNorm = normProvincia(order.provincia, { contraCanalizador: true });
+    if (order.provincia_destino_norm !== expectedProvinciaNorm) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['provincia_destino_norm'],
-        message: `provincia_destino_norm debe ser norm(provincia): "${norm(order.provincia)}"`,
+        message: `provincia_destino_norm debe ser normProvincia(provincia, {contraCanalizador:true}): "${expectedProvinciaNorm}"`,
       });
     }
 

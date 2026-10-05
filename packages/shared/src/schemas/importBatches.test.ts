@@ -30,4 +30,16 @@ describe('lotes_importacion', () => {
   ])('rechaza %s', (_label, override) => {
     expect(importBatchSchema.safeParse({ ...valid, ...override }).success).toBe(false);
   });
+
+  it('D35: rechaza la falta de importado_por', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { importado_por, ...noAuthor } = valid;
+    expect(importBatchSchema.safeParse(noAuthor).success).toBe(false);
+  });
+
+  it('D35: rechaza la falta de importado_en', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { importado_en, ...noTimestamp } = valid;
+    expect(importBatchSchema.safeParse(noTimestamp).success).toBe(false);
+  });
 });
