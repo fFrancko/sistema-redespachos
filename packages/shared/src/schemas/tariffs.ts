@@ -38,7 +38,7 @@ export const tariffRuleSchema = z
     provincia_origen: z.string().min(1), // `*` = cualquier origen
     localidad_origen: z.string().min(1).optional(),
     provincia_destino: z.string().min(1),
-    localidad_destino: z.string().min(1).optional(),
+    localidad_destino: z.string().min(1), // parte de variante_id y se muestra en las opciones
     codigo_postal_destino: cpSchema,
     zona_destino: z.string().min(1),
     plazo_estimado_dias: z.number().int().nonnegative().optional(),

@@ -321,3 +321,17 @@ Cada una lleva el supuesto con el que avancé. Las contradicciones que ya resolv
      tickets/MVP-04.md                                  | 298 +++++++++++++++++
      57 files changed, 4999 insertions(+), 90 deletions(-)
      ```
+
+## Correcciones posteriores (FIX shared, rama `mvp-04-fix-shared`)
+
+Aplicadas sobre `main` después del merge de la PR #17. Reemplazan los supuestos 10, 18 y 19 de PREGUNTAS donde se indica.
+
+1. `packages/shared/tsconfig.json`: `noEmit: false` y `**/*.test.ts` en `exclude`. `pnpm build` ahora emite `dist/` sin ningún test (0 archivos `*.test.*` en `dist` ni en el tarball de `npm pack --dry-run`). Los tests siguen en el typecheck por `scripts/tsconfig.json`, que incluye `../src/**/*.ts`.
+2. `packages/shared/package.json`: `main`, `types`, `exports["."]` y `files: ["dist"]`.
+3. `fecha_aceptacion` en la raíz de `orderSchema` (D31, reemplaza el supuesto 19). Opcional sin `confirmacion` y obligatoria con ella. Se sacó de `confirmacion` (que queda `{respuesta, respuesta_id}`) porque D31 dice raíz y no anidado; la propuesta de dejarlo en ambos lugares queda descartada por eso.
+4. `localidad_destino` obligatoria en `tariffRuleSchema` (D30, reemplaza parte del supuesto 10).
+5. `invalidOrderSchema.estado` pasa a `CON_ERROR | CANCELADO` (D32, reemplaza parte del supuesto 18): un `CANCELADO` desde `CON_ERROR` conserva `errores` no vacío. Un `CANCELADO` limpio sigue validando por `orderSchema`.
+
+Verificación: `pnpm lint`, `pnpm typecheck`, `pnpm test` (470 tests) y `pnpm build` en verde.
+
+**Pendiente que no cubre este FIX:** `dist/index.js` no se puede importar con Node puro (`ERR_MODULE_NOT_FOUND` por los imports relativos sin extensión de `src/`); sí funciona con tsx y con bundlers. Además `packages/motor` y `apps/functions` todavía no declaran `@sistema-redespachos/shared` como dependencia.

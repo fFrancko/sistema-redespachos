@@ -128,9 +128,9 @@ export const quoteDiscardSchema = z.object({
 });
 export type QuoteDiscard = z.infer<typeof quoteDiscardSchema>;
 
+// `fecha_aceptacion` no va acá: vive en la raíz del pedido (D31).
 export const orderConfirmationSchema = z.object({
   respuesta: responseSchema,
-  fecha_aceptacion: dateSchema,
   respuesta_id: refSchema,
 });
 export type OrderConfirmation = z.infer<typeof orderConfirmationSchema>;
@@ -152,33 +152,48 @@ const orderContextShape = {
 
 // Colección `pedidos` (§2.4), pedidos que pasaron la validación de fila (VALIDADO en adelante).
 // Id del documento: `{sucursal_id}_{nro_pedido}`.
-export const orderSchema = orderImportSchema.extend({
-  ...orderContextShape,
-  cp_destino_norm: cpSchema,
-  provincia_destino_norm: z.string().min(1),
-  provincia_origen: z.string().min(1).optional(),
-  localidad_origen: z.string().min(1).optional(),
-  canalizador: orderPostalRouterSchema.optional(),
-  estado: orderStatusSchema.exclude(['CON_ERROR']),
-  errores: z.array(orderRowErrorSchema).length(0),
-  cotizacion: quoteSchema.optional(),
-  alternativas: z.array(quoteAlternativeSchema).max(20).optional(),
-  descartes: z.array(quoteDiscardSchema).optional(),
-  proforma_id: refSchema.optional(),
-  confirmacion: orderConfirmationSchema.optional(),
-  reporte_liquidacion_id: refSchema.optional(),
-  reporte_oc_id: refSchema.optional(),
-});
+export const orderSchema = orderImportSchema
+  .extend({
+    ...orderContextShape,
+    cp_destino_norm: cpSchema,
+    provincia_destino_norm: z.string().min(1),
+    provincia_origen: z.string().min(1).optional(),
+    localidad_origen: z.string().min(1).optional(),
+    canalizador: orderPostalRouterSchema.optional(),
+    estado: orderStatusSchema.exclude(['CON_ERROR']),
+    errores: z.array(orderRowErrorSchema).length(0),
+    cotizacion: quoteSchema.optional(),
+    alternativas: z.array(quoteAlternativeSchema).max(20).optional(),
+    descartes: z.array(quoteDiscardSchema).optional(),
+    proforma_id: refSchema.optional(),
+    // D31: en la raíz, para que el índice `pedidos(estado, fecha_aceptacion)` y los filtros de
+    // §3.5 y §7.8 operen sobre un campo propio del pedido.
+    fecha_aceptacion: dateSchema.optional(),
+    confirmacion: orderConfirmationSchema.optional(),
+    reporte_liquidacion_id: refSchema.optional(),
+    reporte_oc_id: refSchema.optional(),
+  })
+  .superRefine((order, ctx) => {
+    if (order.confirmacion !== undefined && order.fecha_aceptacion === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['fecha_aceptacion'],
+        message: 'fecha_aceptacion es obligatoria si hay confirmacion',
+      });
+    }
+  });
 export type Order = z.infer<typeof orderSchema>;
 
-// Pedido persistido con `estado = CON_ERROR`: la fila falló la validación, así que los datos de
-// importación pueden faltar o ser inválidos. Conserva `nro_pedido` y las columnas del TMS en `origen_tms`.
+// Pedido cuya fila falló la validación: `estado = CON_ERROR`, o `CANCELADO` si se canceló desde
+// `CON_ERROR` (§3.7) conservando la traza de `errores`. Los datos de importación pueden faltar.
+// Conserva `nro_pedido` y las columnas del TMS en `origen_tms`. Un `CANCELADO` sin errores
+// (por ejemplo, desde VALIDADO) valida por `orderSchema`.
 export const invalidOrderSchema = orderImportSchema
   .partial()
   .required({ nro_pedido: true, origen_tms: true })
   .extend({
     ...orderContextShape,
-    estado: z.literal('CON_ERROR'),
+    estado: z.enum(['CON_ERROR', 'CANCELADO']),
     errores: z.array(orderRowErrorSchema).min(1),
   });
 export type InvalidOrder = z.infer<typeof invalidOrderSchema>;

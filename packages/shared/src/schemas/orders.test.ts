@@ -41,6 +41,8 @@ const validOrder = {
   errores: [],
 };
 
+const confirmation = { respuesta: 'ACEPTA', respuesta_id: 'r1' };
+
 const variante = {
   localidad: 'LOCALIDAD UNO',
   zona: 'ZONA UNO',
@@ -158,11 +160,8 @@ describe('pedidos validados', () => {
         },
       ],
       proforma_id: 'pf1',
-      confirmacion: {
-        respuesta: 'ACEPTA',
-        fecha_aceptacion: '2026-10-02',
-        respuesta_id: 'r1',
-      },
+      fecha_aceptacion: '2026-10-02',
+      confirmacion: { respuesta: 'ACEPTA', respuesta_id: 'r1' },
       reporte_liquidacion_id: 'rl1',
       reporte_oc_id: 'roc1',
     };
@@ -211,25 +210,45 @@ describe('pedidos validados', () => {
     [
       'confirmacion con respuesta inventada',
       {
-        confirmacion: {
-          respuesta: 'TAL_VEZ',
-          fecha_aceptacion: '2026-10-02',
-          respuesta_id: 'r1',
-        },
+        fecha_aceptacion: '2026-10-02',
+        confirmacion: { respuesta: 'TAL_VEZ', respuesta_id: 'r1' },
       },
     ],
     [
-      'confirmacion con fecha_aceptacion inexistente',
-      {
-        confirmacion: {
-          respuesta: 'ACEPTA',
-          fecha_aceptacion: '2026-02-30',
-          respuesta_id: 'r1',
-        },
-      },
+      'confirmacion sin respuesta_id',
+      { fecha_aceptacion: '2026-10-02', confirmacion: { respuesta: 'ACEPTA' } },
     ],
+    ['confirmacion sin fecha_aceptacion en la raíz', { confirmacion: confirmation }],
+    ['fecha_aceptacion inexistente', { fecha_aceptacion: '2026-02-30' }],
+    ['fecha_aceptacion con otro formato', { fecha_aceptacion: '02/10/2026' }],
+    ['fecha_aceptacion como number', { fecha_aceptacion: 20261002 }],
   ])('rechaza %s', (_label, override) => {
     expect(orderSchema.safeParse({ ...validOrder, ...override }).success).toBe(false);
+  });
+
+  it('fecha_aceptacion vive en la raíz (D31): es opcional sin confirmacion y obligatoria con ella', () => {
+    expect(orderSchema.safeParse(validOrder).success).toBe(true);
+    expect(
+      orderSchema.safeParse({
+        ...validOrder,
+        estado: 'ACEPTADO_PROVEEDOR',
+        fecha_aceptacion: '2026-10-02',
+        confirmacion: confirmation,
+      }).success,
+    ).toBe(true);
+    const missing = orderSchema.safeParse({ ...validOrder, confirmacion: confirmation });
+    expect(missing.success).toBe(false);
+    if (!missing.success) expect(missing.error.issues[0]?.path).toEqual(['fecha_aceptacion']);
+  });
+
+  it('confirmacion ya no lleva fecha_aceptacion: la que llegue dentro no se conserva', () => {
+    const parsed = orderSchema.parse({
+      ...validOrder,
+      fecha_aceptacion: '2026-10-02',
+      confirmacion: { ...confirmation, fecha_aceptacion: '2026-10-03' },
+    });
+    expect(parsed.confirmacion).toEqual(confirmation);
+    expect(parsed.fecha_aceptacion).toBe('2026-10-02');
   });
 
   it('alternativas admite como máximo 20 elementos', () => {
@@ -336,9 +355,31 @@ describe('pedidos con error (CON_ERROR)', () => {
     expect(invalidOrderSchema.safeParse(invalidOrder).success).toBe(true);
   });
 
+  it('acepta un CANCELADO desde CON_ERROR que conserva los errores', () => {
+    expect(invalidOrderSchema.safeParse({ ...invalidOrder, estado: 'CANCELADO' }).success).toBe(
+      true,
+    );
+    expect(orderDocumentSchema.safeParse({ ...invalidOrder, estado: 'CANCELADO' }).success).toBe(
+      true,
+    );
+  });
+
+  it('un CANCELADO limpio (sin errores) valida por orderSchema, no por invalidOrderSchema', () => {
+    const cancelled = { ...validOrder, estado: 'CANCELADO' };
+    expect(orderSchema.safeParse(cancelled).success).toBe(true);
+    expect(orderDocumentSchema.safeParse(cancelled).success).toBe(true);
+    expect(invalidOrderSchema.safeParse(cancelled).success).toBe(false);
+  });
+
+  it('un CANCELADO desde CON_ERROR sin errores no es válido', () => {
+    expect(
+      invalidOrderSchema.safeParse({ ...invalidOrder, estado: 'CANCELADO', errores: [] }).success,
+    ).toBe(false);
+  });
+
   it.each([
     ['sin errores', { errores: [] }],
-    ['estado distinto de CON_ERROR', { estado: 'VALIDADO' }],
+    ['estado distinto de CON_ERROR y CANCELADO', { estado: 'VALIDADO' }],
     ['sin nro_pedido', { nro_pedido: undefined }],
     ['sin origen_tms', { origen_tms: undefined }],
     ['código de error inventado', { errores: [{ campo: 'x', codigo: 'OTRO', mensaje: 'm' }] }],
