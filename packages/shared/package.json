@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "decimal.js": "^10",
-    "zod": "^3.22.0"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "csv-parse": "^7.0.3",
