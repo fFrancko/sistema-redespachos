@@ -418,4 +418,49 @@ describe('Paso 2: seleccionarCandidatas', () => {
     // No toma ninguna por ambigüedad
     expect(res.candidatas[0].reglas_peso).toHaveLength(0);
   });
+
+  it('origen_estricto=false: no devuelve reglas de otra localidad', () => {
+    const pedido = getMotorInput({ ...baseOrder, codigo_postal_origen: '2000' });
+    const ctx = {
+      ...baseContext,
+      origen_estricto: false,
+      reglas: [
+        createRegla({ provincia_origen: 'BUENOS AIRES', localidad_origen: 'LA PLATA' }),
+      ],
+    };
+    const res = seleccionarCandidatas(pedido, ctx);
+    expect(res.candidatas[0].reglas_peso).toHaveLength(0);
+  });
+
+  it('origen_estricto=false: toma provincia si se mezcla con otra', () => {
+    const pedido = getMotorInput({ ...baseOrder, codigo_postal_origen: '2000' });
+    const ctx = {
+      ...baseContext,
+      origen_estricto: false,
+      reglas: [
+        createRegla({ provincia_origen: 'BUENOS AIRES', localidad_origen: undefined }),
+        createRegla({ provincia_origen: 'CORDOBA', localidad_origen: 'RIO CUARTO' }),
+      ],
+    };
+    // Las reglas de otras provincias sin localidad_origen son solo BUENOS AIRES.
+    // La regla de CORDOBA tiene localidad, por ende se ignora en el fallback.
+    // Luego provinciasDistintas.size === 1 (BUENOS AIRES). Toma las de BUENOS AIRES.
+    const res = seleccionarCandidatas(pedido, ctx);
+    expect(res.candidatas[0].reglas_peso).toHaveLength(1);
+    expect(res.candidatas[0].reglas_peso[0].provincia_origen).toBe('BUENOS AIRES');
+  });
+
+  it('origen_estricto=false: CP desconocido solo aplica *', () => {
+    const pedido = getMotorInput({ ...baseOrder, codigo_postal_origen: '9999' });
+    const ctx = {
+      ...baseContext,
+      origen_estricto: false,
+      reglas: [
+        createRegla({ provincia_origen: 'BUENOS AIRES', localidad_origen: undefined }),
+      ],
+    };
+    // Origen desconocido -> provincia_origen es undefined. El fallback requiere provincia_origen !== undefined.
+    const res = seleccionarCandidatas(pedido, ctx);
+    expect(res.candidatas[0].reglas_peso).toHaveLength(0);
+  });
 });
