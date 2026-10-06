@@ -129,4 +129,53 @@ Franco responde antes de dar el OK al plan. Las recomendaciones son de Claude.
 Dos intentos del 06/10 se descartaron sin commit: tipos y fixtures inventados (campos que no existen en `shared`), `package.json` reescrito (sin `"type": "module"`, `dist` en CommonJS), códigos de observación inventados, el paso 1 omitido y este ticket sobrescrito. El próximo intento empieza desde `origin/main`.
 
 ## Nota de entrega
-Usar la plantilla de `tickets/_TEMPLATE.md`.
+Implementación finalizada.
+
+- **Commit:** 74fcbb79bcf64e54cb47b30d2760ffb7ee9e2ac5
+- **Riesgos / Decisiones:** 
+  - Al buscar el CP de origen en el canalizador, como la arquitectura no indica cómo resolver si hubiera múltiples registros para el mismo CP de origen, se toma el primero (dado que todos suelen compartir provincia y localidad para un mismo CP en el padrón).
+
+### Asignación de tests a criterios de aceptación
+| Criterio de aceptación | Test asociado (`candidatas.test.ts` salvo que se indique otro) |
+| --- | --- |
+| Por cada nivel de precedencia de origen | `Test precedencia origen y ausencia de caída (origen_estricto=false)` |
+| Por origen_estricto | `Test origen_estricto=true, provincia coincide` / `Test origen_estricto=true, provincia no coincide` |
+| Por vigencia según fecha_referencia (bordes) | `Test vigencia bordes` |
+| Por CP con varias variantes | `Test CP con varias variantes (misma provincia y distinta)` |
+| Por CP ausente del canalizador | `CP destino ausente del canalizador` / `CP origen ausente` (ambos en `destino.test.ts`) y `Test CP ausente del canalizador` |
+| Ausencia de caída a grupo más general | `Test precedencia origen y ausencia de caída (origen_estricto=false)` |
+| Proveedor INACTIVO con tarifario vigente | `Test proveedor INACTIVO con tarifario vigente no aparece` |
+| El pedido usa solo los `_norm` (D33) | `Test el pedido usa solo los _norm` |
+| Alias de provincia | `Test 4: alias de provincia (CABA contra canalizador)` (`destino.test.ts`) / `Test alias de provincia: pedido CABA contra regla CAPITAL FEDERAL` |
+| Determinismo | `Determinismo: no hay Date.now ni new Date en src` |
+| Falla con dos tarifarios vigentes del mismo prov | `Falla si hay dos tarifarios vigentes` |
+
+### Secuencia `AGENTS.md §5.5` en verde
+```
+> sistema-redespachos@0.0.1 ci:run C:\Users\Franco Aranda\Documents\sistema-redespachos
+> pnpm --filter @sistema-redespachos/shared build && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
+
+Scope: 4 of 5 workspace projects
+apps/web typecheck$ tsc --noEmit
+packages/shared typecheck$ tsc --noEmit && tsc -p scripts --noEmit
+apps/web typecheck: Done
+packages/shared typecheck: Done
+apps/functions typecheck$ tsc --noEmit
+packages/motor typecheck$ tsc --noEmit
+packages/motor typecheck: Done
+apps/functions typecheck: Done
+
+> sistema-redespachos@0.0.1 test C:\Users\Franco Aranda\Documents\sistema-redespachos
+> vitest run
+...
+ Test Files  23 passed (23)
+      Tests  505 passed (505)
+```
+
+### Prueba de consumo
+```
+> @sistema-redespachos/motor@0.0.1 build C:\Users\Franco Aranda\Documents\sistema-redespachos\packages\motor
+> tsc
+
+Motor cargado function
+```
