@@ -82,3 +82,162 @@ Preguntas que agregó Claude Code al planificar (06/10):
 
 ## Nota de entrega
 Usar la plantilla de `tickets/_TEMPLATE.md`.
+
+- **Qué se hizo:** son los pasos 3 a 7 de §3.3 en `packages/motor`.
+  - `tramos.ts`: tramo `(min, max]`, excedente y descartes.
+  - `calculo.ts`: fórmulas en `Decimal`, half-up a centavo, criterio y colecta (D7).
+  - `ranking.ts`: orden D11 y `CP_AMBIGUO` evaluado por proveedor.
+  - `cotizar.ts` y `formato.ts`: `cotizar(pedido, contexto)`, `MOTOR_VERSION = '1.0.0'` y `detalle_tarifa` en formato es-AR.
+  - Los montos se calculan en `Decimal` y pasan a `cents` con `decimalToCents` recién al armar la salida.
+  - `vitest.config.ts` activa solo el umbral de 90 % de `motor` y agrega `packages/*/test/**/*.test.ts` al `include`.
+  - Los `tsconfig` de `motor` revisan `test/` en el typecheck y construyen solo `src`.
+- **Commit:** `83c6e4b` en `mvp-14-motor-calculo`, que contiene el código y el Plan y las PREGUNTAS del ticket. Esta nota va en el commit siguiente. Sin push ni PR.
+- **Archivos tocados:** `git diff --stat origin/main...HEAD`, sobre `83c6e4b`:
+  ```
+   packages/motor/src/calculo.test.ts    | 194 ++++++++++++++++
+   packages/motor/src/calculo.ts         | 112 ++++++++++
+   packages/motor/src/cotizar.test.ts    | 408 ++++++++++++++++++++++++++++++++++
+   packages/motor/src/cotizar.ts         | 120 ++++++++++
+   packages/motor/src/formato.ts         |  45 ++++
+   packages/motor/src/index.test.ts      |  17 ++
+   packages/motor/src/index.ts           |   5 +
+   packages/motor/src/ranking.ts         |  33 +++
+   packages/motor/src/tramos.test.ts     | 101 +++++++++
+   packages/motor/src/tramos.ts          |  66 ++++++
+   packages/motor/src/types.ts           |  20 ++
+   packages/motor/test/fixtures/motor.ts | 198 +++++++++++++++++
+   packages/motor/test/guardas.test.ts   | 103 +++++++++
+   packages/motor/tsconfig.build.json    |   4 +
+   packages/motor/tsconfig.json          |   3 +-
+   tickets/MVP-14.md                     |  30 ++-
+   vitest.config.ts                      |  14 +-
+   17 files changed, 1466 insertions(+), 7 deletions(-)
+  ```
+- **Cómo probarlo:**
+  ```bash
+  pnpm install --frozen-lockfile && pnpm format && pnpm ci:run
+  pnpm test:coverage
+  pnpm exec vitest run packages/motor
+  ```
+- **Resultado de la verificación:** la secuencia de `AGENTS.md` §5.5 en un worktree limpio de `83c6e4b`, sin `dist/` y con `node_modules` recién instalados. Salió con exit 0, y `pnpm format` no cambió ningún archivo (`git status` vacío). En la salida, la ruta del worktree aparece abreviada.
+  ```
+  > pnpm install --frozen-lockfile
+  Scope: all 5 workspace projects
+  Lockfile is up to date, resolution step is skipped
+  Packages: +860
+  Done in 27.5s
+
+  > pnpm --filter @sistema-redespachos/shared build && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
+  > @sistema-redespachos/shared@0.0.1 build …\packages\shared
+  > tsc
+  > sistema-redespachos@0.0.1 lint …
+  > eslint apps/web/src apps/functions packages --max-warnings 0
+  > sistema-redespachos@0.0.1 format:check …
+  > prettier --check .
+  Checking formatting...
+  All matched files use Prettier code style!
+  > sistema-redespachos@0.0.1 typecheck …
+  > pnpm -r typecheck
+  Scope: 4 of 5 workspace projects
+  apps/web typecheck: Done
+  packages/shared typecheck: Done
+  packages/motor typecheck: Done
+  apps/functions typecheck: Done
+  > vitest run
+   ✓ packages/motor/src/candidatas.test.ts (27 tests) 46ms
+   ✓ packages/motor/src/cotizar.test.ts (25 tests) 29ms
+   ✓ packages/motor/src/calculo.test.ts (15 tests) 11ms
+   ✓ packages/motor/src/destino.test.ts (7 tests) 3ms
+   ✓ packages/motor/src/tramos.test.ts (7 tests) 3ms
+   ✓ packages/motor/test/guardas.test.ts (8 tests) 72ms
+   ✓ packages/motor/src/index.test.ts (2 tests) 2ms
+   (… 21 archivos de shared y web, todos ✓)
+   Test Files  28 passed (28)
+        Tests  580 passed (580)
+  > pnpm -r build
+  packages/shared build: Done
+  apps/web build: ✓ built in 1.28s
+  apps/web build: Done
+  packages/motor build: Done
+  apps/functions build: Done
+  ```
+  `pnpm test:coverage` (exit 0):
+  ```
+        Tests  580 passed (580)
+   ...ages/motor/src |   99.77 |    96.23 |     100 |   99.77 |
+    calculo.ts       |     100 |    96.66 |     100 |     100 | 59
+    candidatas.ts    |     100 |    98.27 |     100 |     100 | 23
+    cotizar.ts       |   98.83 |    95.65 |     100 |   98.83 | 65
+    destino.ts       |     100 |      100 |     100 |     100 |
+    formato.ts       |     100 |      100 |     100 |     100 |
+    ranking.ts       |     100 |      100 |     100 |     100 |
+    tramos.ts        |     100 |     86.2 |     100 |     100 | 23-24
+    types.ts         |       0 |        0 |       0 |       0 |
+  ```
+  Para probar que el umbral corta, agregué en local un archivo temporal `src/zz-temporal-sin-tests.ts` con 60 funciones sin tests y lo borré después, sin commitearlo. Con ese archivo, `pnpm test:coverage` sale con exit 1:
+  ```
+   ...ages/motor/src |    87.5 |    95.72 |   95.83 |    87.5 |
+  ERROR: Coverage for lines (87.5%) does not meet "packages/motor/src/**" threshold (90%)
+  ERROR: Coverage for statements (87.5%) does not meet "packages/motor/src/**" threshold (90%)
+  ```
+  Mutaciones manuales, aplicadas una por una y revertidas: todas hacen fallar algún test.
+  - Half-even en lugar de half-up.
+  - `>` en lugar de `≥` en el criterio.
+  - Colecta tomada siempre de la regla de peso.
+  - `costo_base_viaje` ignorado.
+  - Borde `[min, max)` en lugar de `(min, max]`.
+  - Sin desempate por `id_proveedor`, y sin desempate por `variante_id`.
+  - `CP_AMBIGUO` evaluado de forma global.
+  - Sin `COBERTURA_QX`.
+  - Sin el tope de 20 alternativas.
+  - `VALOR_DECLARADO_FALTANTE` sin la condición de seguro.
+  - Sin redondeo en colecta, seguro, IVA o costo de componente.
+
+  Sobrevivió una sola: `valor > tope` → `valor ≥ tope` en `tramos.ts`. Es equivalente, porque un valor igual al tope ya cae en el último tramo antes de llegar a esa línea.
+- **Consumo real:** un script ESM importa `packages/motor/dist/index.js` y el `dist` de `shared`, arma los dos casos de referencia validados con los esquemas de `shared`, ejecuta `cotizar` y valida la salida con `quoteSchema`:
+  ```
+  MOTOR_VERSION 1.0.0
+  Caso 1 VALORIZADO {"id_proveedor":"PROV1","tarifario_id":"TAR1","variante_id":"2000|ROSARIO|Z1","variante":{"localidad":"ROSARIO","zona":"Z1","plazo_estimado_dias":null},"regla_peso_id":"P2","regla_volumen_id":"V2","criterio":"VOLUMEN","detalle_tarifa":"VOLUMEN 0,05–0,5 m3: tramo $2.600,00","costo_peso":160000,"costo_volumen":260000,"flete":260000,"colecta":32083,"seguro":50000,"neto":342083,"iva_porcentaje":"21","iva":71837,"total":413920,"fecha_referencia":"2026-10-06","motor_version":"1.0.0"}
+  Caso 1 total $ 4139.20 | quoteSchema: true
+  Caso 2 VALORIZADO PESO flete $ 530000.00 | PESO 900–1.000 kg: tramo $500.000,00 + excedente 50 kg × $600,00 | quoteSchema: true
+  ```
+- **Evidencia del criterio de aceptación:**
+
+  | Criterio | Evidencia |
+  | --- | --- |
+  | §4: cobertura de 90 % o más | `pnpm test:coverage`: `motor/src` da 99,77 % de líneas, 96,23 % de ramas y 100 % de funciones; debajo de 90 % sale con exit 1 (ver arriba) |
+  | §4 y agregado 1: caso 1 = $4.139,20, componente por componente | `cotizar.test.ts` › "caso 1: cada componente en centavos…", más el consumo real |
+  | §4: caso 2, flete $530.000,00 | `cotizar.test.ts` › "caso 2: excedente…", más el consumo real |
+  | §4 y agregado 8: sin `number` para dinero, sin km ni paradas | `test/guardas.test.ts` busca los 4 tokens del ticket en todo `src`, conversiones a `number` y aritmética binaria sobre montos, y verifica su propio detector con ejemplos buenos y malos. `grep -rniE "km\|parada\|Number\(\|parseFloat" packages/motor/src` no devuelve coincidencias (exit 1) |
+  | 2. Bordes de tramo | `tramos.test.ts`: 10 / 10.0001 kg, borde de volumen, tope y tope + 0.0001 |
+  | 3. Half-up en los bordes | `calculo.test.ts`: `costo_peso`, `costo_volumen`, `seguro`, `iva` y colecta (…5 sube, …49 baja). El helper exige que el monto llegue con 2 decimales o menos |
+  | 4. Empates | `cotizar.test.ts` › "empate de total entre dos proveedores…" y "…entre dos variantes del mismo proveedor…" |
+  | 5. Descartes | `tramos.test.ts` (peso y volumen por separado), `calculo.test.ts` (`SIN_TARIFA`) y `cotizar.test.ts` (orden y motivos) |
+  | 6. Los tres resultados del paso 7 | `cotizar.test.ts` › "resultado sugerido": `VALORIZADO` (también con `DESCONOCIDA`), `SIN_COBERTURA`, y `COBERTURA_QX` con y sin candidatas |
+  | 7. `quoteSchema` y `quoteAlternativeSchema` | `expectSchemas` en `cotizar.test.ts`, en los casos 1, ranking, 20 alternativas y `COBERTURA_QX` |
+  | 9. Umbral | `vitest.config.ts`; ver arriba |
+  | 10. §5.5 y consumo real | ver arriba |
+  | Deuda H-4(a) | `cotizar.test.ts` › "determinismo": 2 proveedores × 2 variantes; dos corridas, más una con proveedores y reglas en orden inverso, dan resultados iguales con `toEqual` |
+
+- **Decisiones tomadas** (PREGUNTAS 5 a 9; Franco pidió detallar las que tocan reglas de negocio):
+  - **PREGUNTA 5, regla de negocio sobre datos inválidos:** si no hay un único tramo que contenga el valor y el valor no supera el tope (hueco, solapamiento o dos "últimos" tramos con el mismo tope), la candidata se descarta con `SIN_TARIFA`. No se lanza error, para que el lote no se detenga (§3.3 paso 7), y no se elige un precio arbitrario. D3 y MVP-11 impiden esos datos. Si preferís un error o un código propio, se cambia en `tramos.ts`, aunque un código nuevo requiere un `CR: shared`.
+  - **PREGUNTA 6, regla de negocio:** `VALOR_DECLARADO_FALTANTE` se agrega cuando falta `valor_declarado` y algún proveedor candidato (válido o descartado) tiene `aplica_seguro`. Esto sigue el texto del ticket, que es la fuente 1, y no la lectura amplia de D8. Un valor declarado igual a 0 cuenta como informado. Si se quiere la lectura de D8 (siempre que falte), es un cambio de una línea en `cotizar.ts`.
+  - **PREGUNTA 7, literal de la arquitectura:** con `costo_peso = costo_volumen` gana `PESO`, aunque el pedido no tenga reglas de peso. Así, con un único tipo de reglas a precio 0, se pierde la colecta de la otra regla. Está documentado en `calculo.test.ts`.
+  - **PREGUNTAS 8 y 9, formato y nombres:**
+    - `detalle_tarifa` sigue el formato propuesto en la PREGUNTA 8.
+    - `MOTOR_VERSION` es `'1.0.0'` y `MAX_ALTERNATIVAS` es 20.
+    - La salida es `QuoteResult`, con `estado_sugerido` y `cotizacion: null` si no hay candidata válida. Los tipos y las funciones están en inglés, siguiendo la regla 2 y el estilo de MVP-13 (`Candidate`, `CandidateSelection`); `cotizar` y `seleccionarCandidatas` conservan sus nombres.
+  - **Orden de los descartes:** si una candidata excede peso y volumen sin precio, el motivo es el de peso, que se evalúa primero.
+  - **Fixture de determinismo:** dentro de una misma variante, todas las reglas tienen el mismo plazo. Si no, MVP-13 toma el plazo de la primera regla, y el resultado depende del orden de entrada (D-5, que rechaza MVP-11).
+- **Supuestos:**
+  - `seleccionarCandidatas` solo devuelve proveedores del `contexto` (los filtra por `ACTIVO`). Por eso `cotizar` no revisa si falta el proveedor.
+  - `porcentaje_seguro` y `costo_colecta` vienen cuando su bandera es `true`, como exigen los esquemas de `shared`. Si faltan, `decToDecimal` falla, y hay un test que lo prueba.
+- **Fuera de alcance:**
+  - Aplicar la transición de estado, completar `origen` y `calculado_en`, persistir y crear `solicitudes_cp` → MVP-18.
+  - Casos dorados → MVP-15, que ya puede ponerlos en `packages/motor/test/golden/`, ahora incluido en Vitest y en el typecheck.
+  - H-9 (origen con varios registros) → CR-07.
+  - D-4 y D-5 (consistencia de variante y plazo) → MVP-11.
+- **Riesgos y deuda:**
+  - **Incidente de proceso, a revisar primero.** Durante el trabajo, alguien cambió este mismo directorio de trabajo de rama varias veces (reflog: 18:37, 18:40, 18:43 y 19:00:37). Eso revirtió el Plan del ticket y, a las 19:00:37, dejó `HEAD` en `cr-03-deps-carril-b`, con lo que mi primer commit (`3635237`) quedó sobre esa rama. Lo rearmé en `mvp-14-motor-calculo` con cherry-pick en un worktree aparte (`83c6e4b`) y repetí ahí toda la verificación. **`cr-03-deps-carril-b` todavía tiene el commit `3635237` (local, sin push)**. No lo saqué, porque esa rama no es de este ticket: lo decide Franco.
+  - La guarda de aritmética es heurística (expresiones regulares sobre nombres de montos). Un monto con un nombre fuera de la lista no se detectaría. El auditor puede revisar la lista `MONTO` de `guardas.test.ts`.
+  - `CP_AMBIGUO` compara el total redondeado a centavos y el plazo (`null` cuenta como un valor).
