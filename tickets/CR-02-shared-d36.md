@@ -1,7 +1,8 @@
 # CR-02 — `packages/shared`: `origen_tms` completo en los pedidos con error (D36)
 
 - **Carril:** Compartido (`CR: shared`, aprobado por Franco el 5/10/2026). Es el único cambio permitido a `packages/shared` en este ticket.
-- **Agente:** por definir (Franco asigna). Lo audita el otro agente.
+- **Agente:** Gemini (Antigravity) · **Modelo:** Gemini Pro · **Esfuerzo:** medio
+- **Auditor:** Claude Code · **Modelo:** Opus 5.5 · **Esfuerzo:** high · auditoría estándar + reconstruir desde `origen_tms` una fila con error y compararla con el CSV
 - **Rama:** `cr-02-shared-d36`
 - **Depende de:** merge a `main` del cierre de la Ola 0. Tiene que estar mergeado **antes de MVP-17**. No bloquea MVP-13 ni MVP-14.
 - **Origen:** `docs/ola-0/informe-validacion.md`, H-01; decisión P-03.

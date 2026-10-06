@@ -1,7 +1,8 @@
 # CR-01 — Infraestructura antes de abrir los carriles
 
 - **Carril:** Compartido (`CR` aprobado por Franco el 5/10/2026).
-- **Agente:** por definir (Franco asigna).
+- **Agente:** Claude Code · **Modelo:** Sonnet 5.5 · **Esfuerzo:** medium
+- **Auditor:** Gemini · auditoría estándar
 - **Rama:** `cr-01-infraestructura`
 - **Depende de:** merge a `main` del cierre de la Ola 0 (`ola-0-cierre`).
 - **Origen:** `docs/ola-0/informe-validacion.md`, hallazgos H-04, H-07, H-08, H-11 y H-14.

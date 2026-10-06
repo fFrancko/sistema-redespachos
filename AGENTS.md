@@ -18,7 +18,7 @@ Si dos fuentes se contradicen, **no decidas**: seguí la de menor número, dejá
 | Carril | Dueño de |
 | --- | --- |
 | **A · Cotización** | `packages/motor`, `apps/functions/src/<tipo>/{postalRouter,tariffs,orders}/`, `apps/web/src/features/{cotizacion,pedidos,tarifas,canalizador}/`, `test/fixtures/` de tarifas y pedidos |
-| **B · Plataforma y circuito** | `apps/functions/src/<tipo>/{admin,auth,suppliers,emailTemplates,emails,proformas,settlement,purchaseOrders,reports}/`, `apps/functions/src/exporters/`, `apps/web/src/features/{usuarios,proveedores,sucursales,proformas,liquidacion,oc}/`, `firestore.rules`, `storage.rules`, `firestore.indexes.json` |
+| **B · Plataforma y circuito** | `apps/functions/src/<tipo>/{admin,auth,suppliers,emailTemplates,emails,proformas,settlement,purchaseOrders,reports}/`, `apps/functions/src/exporters/`, `apps/web/src/features/{usuarios,proveedores,sucursales,proformas,liquidacion,oc,auditoria,parametros}/`, `firestore.rules`, `storage.rules`, `firestore.indexes.json` |
 | **Compartido (congelado)** | `packages/shared`, `apps/functions/src/index.ts`, `apps/functions/src/lib`, `apps/web/src/app` (shell y registro de rutas), `.github`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `tsconfig.json` raíz, `vitest.config.ts`, `eslint.config.js`, `.prettierrc`, `.gitignore`, `firebase.json`, `.firebaserc`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` y `docs/` |
 
 `<tipo>` es una de las carpetas que ya existen en `apps/functions/src`: `callables`, `triggers`, `workers`. Dentro de cada una se crea una subcarpeta por dominio (p. ej. `callables/tariffs/`).

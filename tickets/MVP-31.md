@@ -1,7 +1,8 @@
 # MVP-31 — Deploy de `apps/functions`
 
 - **Carril:** Compartido (`CR`). Toca `.github`, `firebase.json`, `apps/functions/tsconfig.json` y `apps/functions/package.json`.
-- **Agente:** el que no haya hecho el `CR` de cierre de Ola 0.
+- **Agente:** Claude Code · **Modelo:** Opus 5.5 · **Esfuerzo:** high
+- **Auditor:** Gemini · auditoría estándar + leer los pasos del run (un paso `skipped` que debía correr es hallazgo)
 - **Rama:** `mvp-31-deploy-functions`
 - **Depende de:** MVP-03 mergeado.
 - **Origen:** evidencia levantada durante el `fix(shared)` de MVP-04. **No es un hallazgo de la auditoría de MVP-04**: el deploy está roto desde antes de ese ticket.
