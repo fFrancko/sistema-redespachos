@@ -92,7 +92,9 @@ export function seleccionarCandidatas(
       if (conAsterisco.length > 0) return conAsterisco;
 
       if (!contexto.origen_estricto && paso1.provincia_origen !== undefined) {
-        const reglasOtrasProv = reglas.filter((r) => r.provincia_origen !== '*' && r.localidad_origen === undefined);
+        const reglasOtrasProv = reglas.filter(
+          (r) => r.provincia_origen !== '*' && r.localidad_origen === undefined,
+        );
         const provinciasDistintas = new Set(
           reglasOtrasProv.map((r) =>
             normProvincia(r.provincia_origen, { contraCanalizador: true }),

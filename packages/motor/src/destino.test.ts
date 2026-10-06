@@ -119,9 +119,73 @@ describe('Paso 1: resolverDestinoYOrigen', () => {
         provincia: 'CAPITAL FEDERAL',
         cabecera: 'CAB_CABA',
       }),
+      createCanalizador({
+        cp: '2000',
+        localidad: 'OTRA',
+        provincia: 'CORDOBA',
+        cabecera: 'CAB_CORDOBA',
+      }),
     ];
 
     const result = resolverDestinoYOrigen(pedido, { canalizador });
     expect(result.canalizador.cabecera).toBe('CAB_CABA');
+  });
+
+  it('Test alias de provincia: RIOJA contra canalizador', () => {
+    const pedido = getMotorInput({
+      ...baseOrder,
+      provincia: 'RIOJA',
+      provincia_destino_norm: 'LA RIOJA',
+      localidad: 'LA RIOJA',
+      localidad_destino_norm: 'LA RIOJA',
+    });
+    const canalizador = [
+      createCanalizador({
+        cp: '2000',
+        localidad: 'LA RIOJA',
+        provincia: 'RIOJA',
+        cabecera: 'CAB_RIOJA',
+      }),
+      createCanalizador({
+        cp: '2000',
+        localidad: 'OTRA',
+        provincia: 'CORDOBA',
+        cabecera: 'CAB_CORDOBA',
+      }),
+    ];
+
+    const result = resolverDestinoYOrigen(pedido, { canalizador });
+    expect(result.canalizador.cabecera).toBe('CAB_RIOJA');
+  });
+
+  it('CP con varios registros, ninguno coincide provincia y hay varios -> DESCONOCIDA', () => {
+    const pedido = getMotorInput({
+      ...baseOrder,
+      provincia_destino_norm: 'SANTA FE',
+    });
+    const canalizador = [
+      createCanalizador({
+        cp: '1000',
+        localidad: 'ORIGEN',
+        provincia: 'BUENOS AIRES',
+        cabecera: 'CAB_ORIGEN',
+      }),
+      createCanalizador({
+        cp: '2000',
+        localidad: 'A',
+        provincia: 'MENDOZA',
+        cabecera: 'CAB_MENDOZA',
+      }),
+      createCanalizador({
+        cp: '2000',
+        localidad: 'B',
+        provincia: 'CORDOBA',
+        cabecera: 'CAB_CORDOBA',
+      }),
+    ];
+
+    const result = resolverDestinoYOrigen(pedido, { canalizador });
+    expect(result.canalizador.cobertura_qx).toBe('DESCONOCIDA');
+    expect(result.observaciones).not.toContain('CP_NO_EN_CANALIZADOR');
   });
 });

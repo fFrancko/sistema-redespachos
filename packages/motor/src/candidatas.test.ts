@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
 import {
   orderSchema,
@@ -8,10 +9,9 @@ import {
 } from '@sistema-redespachos/shared';
 import { seleccionarCandidatas } from './candidatas.js';
 import type { MotorOrderInput, MotorContext } from './types.js';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, readdirSync, statSync } from 'fs';
+import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -61,11 +61,11 @@ describe('Paso 2: seleccionarCandidatas', () => {
       creado_en: '2026-10-06T00:00:00.000Z',
       ...overrides,
     });
-    return { id: overrides.id || 'TAR1', ...data };
+    return { id: (overrides.id as string) || 'TAR1', ...data } as any;
   };
 
-  const createRegla = (overrides: Record<string, unknown>) =>
-    tariffRuleSchema.parse({
+  const createRegla = (overrides: Record<string, unknown>) => {
+    const data = tariffRuleSchema.parse({
       tarifario_id: 'TAR1',
       id_proveedor: 'PROV1',
       tipo_regla: 'PESO',
@@ -91,6 +91,8 @@ describe('Paso 2: seleccionarCandidatas', () => {
       actualizado_en: '2026-10-06T00:00:00.000Z',
       ...overrides,
     });
+    return { id: overrides.id || 'REGLA1', ...data } as any;
+  };
 
   const baseOrder = {
     nro_pedido: '1',
@@ -158,8 +160,8 @@ describe('Paso 2: seleccionarCandidatas', () => {
     origen_estricto: false,
   };
 
-  it('Test precedencia origen y ausencia de caída (origen_estricto=false)', () => {
-    // Si origen_estricto=false, precedencia es localidad -> *
+  it('Test precedencia origen: localidad -> provincia -> * y ausencia de caída', () => {
+    // La precedencia es localidad -> provincia -> *
     // "Si el grupo más específico existe, se usa ese y nunca se cae a uno más general"
     const ctx = {
       ...baseContext,
@@ -308,7 +310,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
         }),
       ],
     };
-    const res = seleccionarCandidatas(pedido, ctx);
+    const res = seleccionarCandidatas(pedido, ctx as any);
     // normProvincia('CAPITAL FEDERAL', { contraCanalizador: true }) es 'BUENOS AIRES',
     // que coincide con pedido.provincia_destino_norm ('BUENOS AIRES')
     expect(res.candidatas).toHaveLength(1);
@@ -320,20 +322,10 @@ describe('Paso 2: seleccionarCandidatas', () => {
       ...baseContext,
       reglas: [createRegla({ codigo_postal_destino: '9999', variante_id: '9999|ROSARIO|Z1' })],
     };
-    const res = seleccionarCandidatas(pedido, ctx);
+    const res = seleccionarCandidatas(pedido, ctx as any);
     expect(res.canalizador.cobertura_qx).toBe('DESCONOCIDA');
     expect(res.observaciones).toContain('CP_NO_EN_CANALIZADOR');
     expect(res.candidatas).toHaveLength(1); // La selección sigue por CP
-  });
-
-  it('Determinismo: no hay Date.now ni new Date en src', () => {
-    const srcDestino = readFileSync(join(__dirname, 'destino.ts'), 'utf-8');
-    const srcCandidatas = readFileSync(join(__dirname, 'candidatas.ts'), 'utf-8');
-
-    expect(srcDestino).not.toMatch(/Date\.now/);
-    expect(srcDestino).not.toMatch(/new Date/);
-    expect(srcCandidatas).not.toMatch(/Date\.now/);
-    expect(srcCandidatas).not.toMatch(/new Date/);
   });
 
   it('Falla si hay dos tarifarios vigentes', () => {
@@ -389,7 +381,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
       origen_estricto: false,
       reglas: [createRegla({ provincia_origen: 'BUENOS AIRES', localidad_origen: undefined })],
     };
-    const res = seleccionarCandidatas(pedido, ctx);
+    const res = seleccionarCandidatas(pedido, ctx as any);
     // Debe tomar las reglas de BUENOS AIRES
     expect(res.candidatas[0].reglas_peso).toHaveLength(1);
     expect(res.candidatas[0].reglas_peso[0].provincia_origen).toBe('BUENOS AIRES');
@@ -414,7 +406,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
         createRegla({ provincia_origen: 'CORDOBA', localidad_origen: undefined, kg_max: '20' }),
       ],
     };
-    const res = seleccionarCandidatas(pedido, ctx);
+    const res = seleccionarCandidatas(pedido, ctx as any);
     // No toma ninguna por ambigüedad
     expect(res.candidatas[0].reglas_peso).toHaveLength(0);
   });
@@ -424,11 +416,9 @@ describe('Paso 2: seleccionarCandidatas', () => {
     const ctx = {
       ...baseContext,
       origen_estricto: false,
-      reglas: [
-        createRegla({ provincia_origen: 'BUENOS AIRES', localidad_origen: 'LA PLATA' }),
-      ],
+      reglas: [createRegla({ provincia_origen: 'BUENOS AIRES', localidad_origen: 'LA PLATA' })],
     };
-    const res = seleccionarCandidatas(pedido, ctx);
+    const res = seleccionarCandidatas(pedido, ctx as any);
     expect(res.candidatas[0].reglas_peso).toHaveLength(0);
   });
 
@@ -445,7 +435,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
     // Las reglas de otras provincias sin localidad_origen son solo BUENOS AIRES.
     // La regla de CORDOBA tiene localidad, por ende se ignora en el fallback.
     // Luego provinciasDistintas.size === 1 (BUENOS AIRES). Toma las de BUENOS AIRES.
-    const res = seleccionarCandidatas(pedido, ctx);
+    const res = seleccionarCandidatas(pedido, ctx as any);
     expect(res.candidatas[0].reglas_peso).toHaveLength(1);
     expect(res.candidatas[0].reglas_peso[0].provincia_origen).toBe('BUENOS AIRES');
   });
@@ -455,12 +445,247 @@ describe('Paso 2: seleccionarCandidatas', () => {
     const ctx = {
       ...baseContext,
       origen_estricto: false,
-      reglas: [
-        createRegla({ provincia_origen: 'BUENOS AIRES', localidad_origen: undefined }),
-      ],
+      reglas: [createRegla({ provincia_origen: 'BUENOS AIRES', localidad_origen: undefined })],
     };
     // Origen desconocido -> provincia_origen es undefined. El fallback requiere provincia_origen !== undefined.
-    const res = seleccionarCandidatas(pedido, ctx);
+    const res = seleccionarCandidatas(pedido, ctx as any);
     expect(res.candidatas[0].reglas_peso).toHaveLength(0);
+  });
+
+  it('Test alias de provincia: pedido RIOJA contra regla LA RIOJA', () => {
+    const pedido = getMotorInput({
+      ...baseOrder,
+      provincia: 'RIOJA',
+      provincia_destino_norm: 'LA RIOJA',
+    });
+    const ctx = {
+      ...baseContext,
+      reglas: [
+        createRegla({
+          provincia_destino: 'RIOJA',
+          localidad_destino: 'RIOJA',
+          variante_id: '2000|RIOJA|Z1',
+        }),
+        createRegla({
+          provincia_destino: 'CORDOBA',
+          localidad_destino: 'CORDOBA',
+          variante_id: '2000|CORDOBA|Z1',
+        }),
+      ],
+    };
+    const res = seleccionarCandidatas(pedido, ctx as any);
+    expect(res.candidatas).toHaveLength(1);
+    expect(res.candidatas[0].variante_id).toBe('2000|RIOJA|Z1');
+    expect(res.observaciones).not.toContain('PROVINCIA_DIFIERE');
+  });
+
+  it('Test alias CABA: pedido CABA contra regla CAPITAL FEDERAL con variante extra', () => {
+    const pedido = getMotorInput({
+      ...baseOrder,
+      provincia: 'CABA',
+      provincia_destino_norm: 'BUENOS AIRES',
+    });
+    const ctx = {
+      ...baseContext,
+      reglas: [
+        createRegla({
+          provincia_destino: 'CAPITAL FEDERAL',
+          localidad_destino: 'RETIRO',
+          variante_id: '2000|RETIRO|Z1',
+        }),
+        createRegla({
+          provincia_destino: 'CORDOBA',
+          localidad_destino: 'CORDOBA',
+          variante_id: '2000|CORDOBA|Z1',
+        }),
+      ],
+    };
+    const res = seleccionarCandidatas(pedido, ctx as any);
+    expect(res.candidatas).toHaveLength(1);
+    expect(res.candidatas[0].variante_id).toBe('2000|RETIRO|Z1');
+    expect(res.observaciones).not.toContain('PROVINCIA_DIFIERE');
+  });
+
+  it('Test precedencia: L1 vs L2 vs *', () => {
+    const pedido = getMotorInput(baseOrder);
+    const ctx = {
+      ...baseContext,
+      reglas: [
+        createRegla({ id: 'R1', localidad_origen: 'ORIGEN', provincia_origen: 'BUENOS AIRES' }),
+        createRegla({ id: 'R2', localidad_origen: undefined, provincia_origen: 'BUENOS AIRES' }),
+        createRegla({ id: 'R3', localidad_origen: undefined, provincia_origen: '*' }),
+      ],
+    };
+    const res = seleccionarCandidatas(pedido, ctx as any);
+    expect(res.candidatas[0].reglas_peso).toHaveLength(1);
+    expect(res.candidatas[0].reglas_peso[0].id).toBe('R1');
+  });
+
+  it('Test precedencia: regla con localidad de origen correcta pero OTRA provincia vs L2', () => {
+    const pedido = getMotorInput(baseOrder);
+    const ctx = {
+      ...baseContext,
+      reglas: [
+        createRegla({ id: 'R1', localidad_origen: 'ORIGEN', provincia_origen: 'CORDOBA' }),
+        createRegla({ id: 'R2', localidad_origen: undefined, provincia_origen: 'BUENOS AIRES' }),
+      ],
+    };
+    const res = seleccionarCandidatas(pedido, ctx as any);
+    expect(res.candidatas[0].reglas_peso).toHaveLength(1);
+    expect(res.candidatas[0].reglas_peso[0].id).toBe('R2');
+  });
+
+  it('Determinismo: dos corridas con misma entrada', () => {
+    const pedido = getMotorInput(baseOrder);
+    const ctx = {
+      ...baseContext,
+      reglas: [
+        createRegla({ id: 'R1', variante_id: '2000|ROSARIO|Z1' }),
+        createRegla({ id: 'R2', variante_id: '2000|ROSARIO|Z1' }),
+      ],
+    };
+    const res1 = seleccionarCandidatas(pedido, ctx as any);
+    const res2 = seleccionarCandidatas(pedido, ctx as any);
+    expect(res1).toStrictEqual(res2);
+  });
+
+  it('Test PROVINCIA_DIFIERE: dos variantes de otra provincia', () => {
+    const pedido = getMotorInput({ ...baseOrder, provincia_destino_norm: 'SANTA FE' });
+    const ctx = {
+      ...baseContext,
+      proveedores: [
+        createProveedor({ id_proveedor: 'P1' }),
+        createProveedor({ id_proveedor: 'P2', cuit: '30700000008' }),
+      ],
+      tarifarios: [
+        createTarifario({ id_proveedor: 'P1', id: 'T1' }),
+        createTarifario({ id_proveedor: 'P2', id: 'T2' }),
+      ],
+      reglas: [
+        createRegla({
+          id_proveedor: 'P1',
+          tarifario_id: 'T1',
+          provincia_destino: 'CORDOBA',
+          localidad_destino: 'CORDOBA',
+          variante_id: '2000|CORDOBA|Z1',
+        }),
+        createRegla({
+          id_proveedor: 'P2',
+          tarifario_id: 'T2',
+          provincia_destino: 'MENDOZA',
+          localidad_destino: 'MENDOZA',
+          variante_id: '2000|MENDOZA|Z1',
+        }),
+      ],
+    };
+    const res = seleccionarCandidatas(pedido, ctx as any);
+    expect(res.candidatas).toHaveLength(2);
+    expect(res.observaciones.filter((o: string) => o === 'PROVINCIA_DIFIERE')).toHaveLength(1);
+  });
+
+  it('Test origen desconocido con regla * (H-7)', () => {
+    const pedido = getMotorInput({ ...baseOrder, codigo_postal_origen: '9999' });
+    const ctx = {
+      ...baseContext,
+      origen_estricto: false,
+      reglas: [
+        createRegla({ id: 'R1', provincia_origen: 'BUENOS AIRES', localidad_origen: undefined }),
+        createRegla({ id: 'R2', provincia_origen: '*', localidad_origen: undefined }),
+      ],
+    };
+    const res = seleccionarCandidatas(pedido, ctx as any);
+    expect(res.candidatas[0].reglas_peso).toHaveLength(1);
+    expect(res.candidatas[0].reglas_peso[0].id).toBe('R2');
+
+    const ctxEstricto = { ...ctx, origen_estricto: true };
+    const resEstricto = seleccionarCandidatas(pedido, ctxEstricto as any);
+    expect(resEstricto.candidatas[0].reglas_peso).toHaveLength(1);
+    expect(resEstricto.candidatas[0].reglas_peso[0].id).toBe('R2');
+  });
+
+  it('Test vigencia: HISTORICO y BORRADOR', () => {
+    const pedido = getMotorInput(baseOrder);
+    const baseRegla = createRegla({ id: 'R1', tarifario_id: 'T1' });
+
+    let ctx = {
+      ...baseContext,
+      tarifarios: [
+        createTarifario({
+          id: 'T1',
+          estado: 'HISTORICO',
+          vigencia_desde: '2026-01-01',
+          vigencia_hasta: '2026-12-31',
+        }),
+      ],
+      reglas: [baseRegla],
+    };
+    expect(seleccionarCandidatas(pedido, ctx as any).candidatas).toHaveLength(1);
+
+    const regla2 = createRegla({ id: 'R2', tarifario_id: 'T2' });
+    ctx = {
+      ...baseContext,
+      tarifarios: [
+        createTarifario({
+          id: 'T1',
+          estado: 'HISTORICO',
+          vigencia_desde: '2025-01-01',
+          vigencia_hasta: '2026-10-05',
+        }),
+        createTarifario({ id: 'T2', estado: 'VIGENTE', vigencia_desde: '2026-10-06' }),
+      ],
+      reglas: [baseRegla, regla2],
+    };
+    const res2 = seleccionarCandidatas(pedido, ctx as any);
+    expect(res2.candidatas).toHaveLength(1);
+    expect(res2.candidatas[0].tarifario_id).toBe('T2');
+
+    ctx = {
+      ...baseContext,
+      tarifarios: [createTarifario({ id: 'T1', estado: 'BORRADOR' as any })],
+      reglas: [baseRegla],
+    };
+    expect(seleccionarCandidatas(pedido, ctx as any).candidatas).toHaveLength(0);
+  });
+
+  it('Test id en reglas (D-3)', () => {
+    const pedido = getMotorInput(baseOrder);
+    const ctx = {
+      ...baseContext,
+      reglas: [
+        createRegla({ id: 'REGLA_CON_ID_1', tipo_regla: 'PESO' }),
+        createRegla({
+          id: 'REGLA_CON_ID_2',
+          tipo_regla: 'VOLUMEN',
+          kg_min: null,
+          kg_max: null,
+          m3_min: '0',
+          m3_max: '10',
+        }),
+      ],
+    };
+    const res = seleccionarCandidatas(pedido, ctx as any);
+    expect(res.candidatas[0].reglas_peso[0].id).toBe('REGLA_CON_ID_1');
+    expect(res.candidatas[0].reglas_volumen[0].id).toBe('REGLA_CON_ID_2');
+  });
+
+  it('Determinismo: no hay Date.now ni new Date en src', () => {
+    function getFiles(dir: string): string[] {
+      const subdirs = readdirSync(dir);
+      const files = subdirs.map((subdir: string) => {
+        const res = resolve(dir, subdir);
+        return statSync(res).isDirectory() ? getFiles(res) : res;
+      });
+      return files.reduce((a: string[], f: string | string[]) => a.concat(f), []);
+    }
+
+    const srcFiles = getFiles(__dirname).filter(
+      (f: string) => f.endsWith('.ts') && !f.endsWith('.test.ts'),
+    );
+
+    for (const f of srcFiles) {
+      const fc = readFileSync(f, 'utf-8');
+      expect(fc).not.toMatch(/Date\.now/);
+      expect(fc).not.toMatch(/new Date/);
+    }
   });
 });

@@ -16,15 +16,15 @@ export interface MotorContext {
   canalizador: PostalRouterEntry[];
   proveedores: Supplier[];
   tarifarios: Array<{ id: string } & Tariff>;
-  reglas: TariffRule[];
+  reglas: Array<{ id: string } & TariffRule>;
   fecha_referencia: string;
   origen_estricto: boolean;
 }
 
 export type Candidate = Pick<TariffRule, 'id_proveedor' | 'variante_id' | 'tarifario_id'> & {
   variante: QuoteAlternative['variante'];
-  reglas_peso: TariffRule[];
-  reglas_volumen: TariffRule[];
+  reglas_peso: Array<{ id: string } & TariffRule>;
+  reglas_volumen: Array<{ id: string } & TariffRule>;
 };
 
 export type CandidateSelection = Partial<Pick<Order, 'provincia_origen' | 'localidad_origen'>> & {
