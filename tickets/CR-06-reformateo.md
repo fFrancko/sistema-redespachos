@@ -4,7 +4,7 @@
 - **Agente:** Gemini (Antigravity) · **Modelo:** Gemini Pro · **Esfuerzo:** bajo
 - **Auditor:** Claude Code · **Modelo:** Sonnet 5.5 · **Esfuerzo:** medium · auditoría liviana + repetir la comparación del punto 3 sobre 5 archivos elegidos por el auditor, incluido `docs/arquitectura-v3.md`
 - **Rama:** `cr-06-reformateo`
-- **Depende de:** CR-05 mergeado y las copias locales refrescadas (punto 5 de CR-05).
+- **Depende de:** CR-05 mergeado y las copias locales refrescadas (punto 6 de CR-05).
 - **Origen:** `tickets/CR-01-infraestructura.md`, nota de entrega: "Archivos que quedaron ignorados por Prettier" y "Fuera de alcance".
 
 ## Contexto a leer
