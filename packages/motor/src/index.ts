@@ -1,4 +1,3 @@
-// Motor de cotización
-export * from './cotizacion/index';
-export * from './tarifas/index';
-export * from './schemas/index';
+export * from './types.js';
+export * from './destino.js';
+export * from './candidatas.js';
