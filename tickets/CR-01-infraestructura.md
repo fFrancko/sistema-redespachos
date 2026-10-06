@@ -63,11 +63,11 @@ Pasos: (1) `ci:run` con Build shared y `format:check`; (2) Prettier con override
   - **NO verificado:** `firebase emulators:exec --only auth,firestore --project demo-qx-ci "pnpm test"` falla localmente con "Could not spawn `java -version`" (Java no instalado). Pendiente de que lo confirme el CI de la PR.
 - **Consumo real:** no aplica (no hay código nuevo consumido por otros paquetes).
 - **Evidencia del criterio de aceptación:**
-  1. `ci:run` pasa tras borrar `packages/*/dist`, `apps/*/dist` y `coverage` (Build shared incluido). Lo probé en este árbol con esos directorios borrados, no en un clon nuevo.
+  1. `ci:run` pasa tras borrar `packages/*/dist`, `apps/*/dist` y `coverage` (Build shared incluido). Además, **prueba de clon limpio**: `git clone --branch cr-01-infraestructura` a un directorio temporal (commit `e115ef1`, sin `packages/shared/dist`), `pnpm install --frozen-lockfile` (Done in 27.6s) y `pnpm ci:run`: exit 0. Salida resumida: `shared build` (tsc) OK; `lint` OK; `format:check` "All matched files use Prettier code style!"; `typecheck` 4 workspaces Done; `test` 22 files, 490 passed; `build` web, shared, motor y functions Done. Después `pnpm test:coverage` en el clon: 490 passed y `git status` vacío. El clon se borró.
   2. `pnpm format:check` pasa sin reformatear ningún archivo; el paso `Format check` está en `ci.yml` después de `Lint`.
   3. `dependabot.yml`: `ignore` con `dependency-name: "*"` y `update-types: ["version-update:semver-major"]` en los dos ecosistemas.
   4. `firestore.rules` deny-all: el archivo cumple; la prueba con emuladores queda pendiente (ver arriba).
-  5. `git status` tras `install && ci:run && test:coverage`: solo queda `?? test/` (pregunta 1); nada más.
+  5. `git status` tras `install && ci:run && test:coverage`: **vacío en el clon limpio**. En la carpeta local de Franco solo queda `?? test/` (artefactos B0, H-15) hasta que Franco los mueva fuera del repo; después se verifica de nuevo.
   6. Secuencia §5.5: arriba, salvo emuladores.
 - **Decisiones tomadas (ajustes de Franco y propias):**
   1. `format:check` también está en `ci:run`, después de `lint`.
@@ -83,4 +83,5 @@ Pasos: (1) `ci:run` con Build shared y `format:check`; (2) Prettier con override
   - CR de reformateo de los 47 archivos y retiro del bloque `TEMPORAL` (sin ticket).
   - Cerrar las 15 PRs de Dependabot y limpiar ramas remotas (acción de Franco, H-08/H-16).
   - Mover los artefactos de B0 de `test/` (H-15).
+- **Formato de archivos nuevos:** `pnpm format` (`prettier --write .`, ya existía en `package.json`) respeta `.prettierignore`: no toca los 47 archivos ignorados, pero **todo `.md` o archivo nuevo debe pasar por `pnpm format`** antes de commitear, o `Format check` falla en CI.
 - **Riesgos y deuda:** (a) emuladores sin verificar localmente (sin Java); (b) `test/` visible como no versionado: no hacer `git add -A`; (c) el ignore de Prettier bloquea archivos nuevos que no cumplan el estilo.
