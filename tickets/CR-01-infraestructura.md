@@ -36,12 +36,52 @@ Todo lo que no figure arriba; en particular `packages/**`, `apps/**`, `pnpm-lock
 6. Secuencia de `AGENTS.md` §5.5 en verde, con la salida pegada.
 
 ## Plan
-<lo completa el agente antes de codear, con la lista de archivos a tocar; Franco da el OK>
+Aprobado por Franco con 6 ajustes (ver "Decisiones tomadas"). Rama `cr-01-infraestructura` desde `origin/main` (6e426ed).
+Archivos: `package.json` (scripts), `.prettierrc`, `.prettierignore`, `.github/workflows/ci.yml`, `.github/dependabot.yml`, `firestore.rules`, `.gitignore`, `docs/CI.md`, este ticket.
+Pasos: (1) `ci:run` con Build shared y `format:check`; (2) Prettier con overrides y ignore explícito; (3) paso Format check en CI; (4) Dependabot sin majors; (5) reglas deny-all tras confirmar que ningún test usa el SDK cliente y que `deploy.yml` no publica reglas; (6) `.gitignore`.
 
 ## PREGUNTAS
-<dudas del agente>
+1. **`test/` ahora aparece sin ignorar.** Al quitar `output/` y `test/fixtures/out/` (pedido por el ticket), los dos artefactos locales de la herramienta B0 (`test/fixtures/out/t.jsonl`, `test/fixtures/output/tabla_maestra.json`, hallazgo H-15) aparecen como `?? test/` en `git status`. No están versionados y **no los toqué ni los agregué al commit**. Pueden ser tarifas reales (dato comercial). Hasta que se muevan a `herramientas-tarifas`, el criterio 5 ("`git status` limpio") no se cumple en la carpeta local de Franco; en un clon limpio sí. ¿Los movés vos, o querés que `.gitignore` conserve `test/fixtures/out/` y `test/fixtures/output/` por ahora?
+2. **Emuladores no verificados localmente:** esta máquina no tiene Java, y la CLI de Firebase lo necesita. Falta correr `firebase emulators:exec` (ver nota). Lo cubre CI en la PR.
 
 ---
 
-## Nota de entrega (la completa el agente al terminar)
-Usar la plantilla de `tickets/_TEMPLATE.md`.
+## Nota de entrega
+- **Qué se hizo:** `ci:run` ahora hace Build shared, lint, format:check, typecheck, test y build. Prettier configurado (`.prettierrc`, `.prettierignore`, `format:check`) y paso `Format check` en CI. Dependabot ignora majors en npm y github-actions. `firestore.rules` pasó a deny-all. `.gitignore` sin reglas de B0 y con `.claude/settings.local.json`. `docs/CI.md` actualizado.
+- **Commit:** `git log -1` en la rama `cr-01-infraestructura` (el hash está en el mensaje de cierre; sin push ni PR).
+- **Archivos tocados:** los 9 del plan (el `git diff --stat` va en el mensaje de cierre).
+- **Cómo probarlo:** `pnpm install --frozen-lockfile && pnpm ci:run && pnpm test:coverage && git status`.
+- **Resultado de la verificación (corrido localmente, Windows, tras borrar los `dist/`):**
+  - `pnpm install --frozen-lockfile`: Done in 7.4s.
+  - `pnpm --filter @sistema-redespachos/shared build`: exit 0.
+  - `pnpm lint`: exit 0 (0 warnings).
+  - `pnpm format:check`: "All matched files use Prettier code style!".
+  - `pnpm typecheck`: 4 workspaces Done.
+  - `pnpm test`: 22 files, **490 passed**.
+  - `pnpm build`: web, shared, functions y motor Done. `pnpm ci:run` completo: exit 0.
+  - `pnpm test:coverage`: 490 passed.
+  - **NO verificado:** `firebase emulators:exec --only auth,firestore --project demo-qx-ci "pnpm test"` falla localmente con "Could not spawn `java -version`" (Java no instalado). Pendiente de que lo confirme el CI de la PR.
+- **Consumo real:** no aplica (no hay código nuevo consumido por otros paquetes).
+- **Evidencia del criterio de aceptación:**
+  1. `ci:run` pasa tras borrar `packages/*/dist`, `apps/*/dist` y `coverage` (Build shared incluido). Además, **prueba de clon limpio**: `git clone --branch cr-01-infraestructura` a un directorio temporal (commit `e115ef1`, sin `packages/shared/dist`), `pnpm install --frozen-lockfile` (Done in 27.6s) y `pnpm ci:run`: exit 0. Salida resumida: `shared build` (tsc) OK; `lint` OK; `format:check` "All matched files use Prettier code style!"; `typecheck` 4 workspaces Done; `test` 22 files, 490 passed; `build` web, shared, motor y functions Done. Después `pnpm test:coverage` en el clon: 490 passed y `git status` vacío. El clon se borró.
+  2. `pnpm format:check` pasa sin reformatear ningún archivo; el paso `Format check` está en `ci.yml` después de `Lint`.
+  3. `dependabot.yml`: `ignore` con `dependency-name: "*"` y `update-types: ["version-update:semver-major"]` en los dos ecosistemas.
+  4. `firestore.rules` deny-all: el archivo cumple; la prueba con emuladores queda pendiente (ver arriba).
+  5. `git status` tras `install && ci:run && test:coverage`: **vacío en el clon limpio**. En la carpeta local de Franco solo queda `?? test/` (artefactos B0, H-15) hasta que Franco los mueva fuera del repo; después se verifica de nuevo.
+  6. Secuencia §5.5: arriba, salvo emuladores.
+- **Decisiones tomadas (ajustes de Franco y propias):**
+  1. `format:check` también está en `ci:run`, después de `lint`.
+  2. Antes de `firestore.rules`: ningún test usa el SDK cliente ni el emulador (`App.test.tsx` no importa `firebase.ts`; `firebase.test.ts` solo prueba esquemas) y `deploy.yml` despliega `--only hosting,functions`, sin reglas. Ambas respuestas fueron "no", así que seguí.
+  3. Excepciones de `.gitignore`: `git ls-files '*.xls*'` no devuelve nada; `!test/fixtures/{input,bad}/*.xlsx` no cubrían ningún archivo versionado.
+  4. **Dependabot y security updates:** los `ignore` **no** afectan las security updates. La documentación de GitHub dice que `update-types` solo afecta a las version updates. Una corrección de seguridad que requiera una major seguirá llegando como PR de seguridad; revisarla a mano.
+  5. Prettier: `singleQuote`, `printWidth: 100`, `endOfLine: auto`, override de comillas dobles en YAML y override de comillas simples para `pnpm-workspace.yaml`. Con eso `packages/shared` queda sin diferencias (con `printWidth` 80 fallaban 40 archivos de `shared`). `endOfLine: auto` porque en Windows el working tree está en CRLF (`core.autocrlf=true`) y en CI en LF.
+  6. En `.prettierignore` el patrón `lib` del ticket se acotó a `apps/functions/lib` para no ignorar `apps/functions/src/lib` (código compartido).
+- **Archivos que quedaron ignorados por Prettier (TEMPORAL, rutas explícitas, 47):** los 43 `.md` (tablas y líneas en blanco que ninguna opción de Prettier arregla) más `apps/web/index.html` (`<!DOCTYPE>`), `apps/web/src/index.css` (`font-family` en varias líneas), `apps/web/src/main.tsx` (coma final en `render(...)`) y `eslint.config.js` (array en una línea). Lista completa en `.prettierignore`. Un archivo nuevo que no cumpla el estilo rompe CI hasta formatearlo o agregarlo.
+- **Supuestos:** que ignorar los `.md` existentes es aceptable aunque el ticket solo nombraba `docs/**` y `tickets/**` (opción A).
+- **Fuera de alcance:**
+  - **Pendiente: `.gitattributes` con `eol=lf`.** Elimina el CRLF del working tree en Windows y permitiría quitar `endOfLine: auto`. Es un archivo nuevo compartido: va como `CR` aparte (sin ticket).
+  - CR de reformateo de los 47 archivos y retiro del bloque `TEMPORAL` (sin ticket).
+  - Cerrar las 15 PRs de Dependabot y limpiar ramas remotas (acción de Franco, H-08/H-16).
+  - Mover los artefactos de B0 de `test/` (H-15).
+- **Formato de archivos nuevos:** `pnpm format` (`prettier --write .`, ya existía en `package.json`) respeta `.prettierignore`: no toca los 47 archivos ignorados, pero **todo `.md` o archivo nuevo debe pasar por `pnpm format`** antes de commitear, o `Format check` falla en CI.
+- **Riesgos y deuda:** (a) emuladores sin verificar localmente (sin Java); (b) `test/` visible como no versionado: no hacer `git add -A`; (c) el ignore de Prettier bloquea archivos nuevos que no cumplan el estilo.

@@ -17,7 +17,8 @@
     "dev:emulator": "firebase emulators:start",
     "lint": "eslint apps/web/src apps/functions packages --max-warnings 0",
     "format": "prettier --write .",
-    "ci:run": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "format:check": "prettier --check .",
+    "ci:run": "pnpm --filter @sistema-redespachos/shared build && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

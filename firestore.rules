@@ -1,10 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Development: allow all in emulator for local testing
-    // Production: authenticated users only, refined by role in phase 2 (MVP-09)
+    // Deny-all: las reglas reales llegan con MVP-07.
+    // Toda escritura pasa por callables (Admin SDK, que ignora las reglas).
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }
