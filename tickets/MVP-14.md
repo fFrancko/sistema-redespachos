@@ -78,6 +78,11 @@ Preguntas que agregó Claude Code al planificar (06/10):
 - **11:** OK, se pueden modificar `packages/motor/tsconfig*.json`.
 - **5 a 9:** Franco no las había visto (el ticket no estaba commiteado). Indicó que, si son decisiones técnicas o de formato, el agente avance con su criterio, y que detalle en la entrega las que toquen reglas de negocio o se aparten de la arquitectura. Se implementaron como están propuestas; ver "Decisiones tomadas" en la Nota de entrega.
 
+**Definiciones finales de Franco sobre 5 a 7 (06/10, después de la primera entrega):**
+- **5:** OK. Se descarta con `SIN_TARIFA`. `OBSERVATION_CODES` no tiene un código para hueco o solapamiento y `shared` está congelado, así que el motivo en `descartes` alcanza. Sin cambios.
+- **6:** OK tal como está. La observación solo interesa si el proveedor pide seguro. Sin cambios.
+- **7 (R7):** ante el empate gana `PESO`, pero si uno de los dos tipos no tiene reglas (`tramo` nulo), el criterio sigue al que sí las tiene. Si ambos cuestan 0, `PESO` no tiene reglas y `VOLUMEN` sí, gana `VOLUMEN` y conserva su colecta. Se implementó en `4f96b41`; ver "Actualización por R7" en la Nota de entrega.
+
 ---
 
 ## Nota de entrega
@@ -222,7 +227,7 @@ Usar la plantilla de `tickets/_TEMPLATE.md`.
 - **Decisiones tomadas** (PREGUNTAS 5 a 9; Franco pidió detallar las que tocan reglas de negocio):
   - **PREGUNTA 5, regla de negocio sobre datos inválidos:** si no hay un único tramo que contenga el valor y el valor no supera el tope (hueco, solapamiento o dos "últimos" tramos con el mismo tope), la candidata se descarta con `SIN_TARIFA`. No se lanza error, para que el lote no se detenga (§3.3 paso 7), y no se elige un precio arbitrario. D3 y MVP-11 impiden esos datos. Si preferís un error o un código propio, se cambia en `tramos.ts`, aunque un código nuevo requiere un `CR: shared`.
   - **PREGUNTA 6, regla de negocio:** `VALOR_DECLARADO_FALTANTE` se agrega cuando falta `valor_declarado` y algún proveedor candidato (válido o descartado) tiene `aplica_seguro`. Esto sigue el texto del ticket, que es la fuente 1, y no la lectura amplia de D8. Un valor declarado igual a 0 cuenta como informado. Si se quiere la lectura de D8 (siempre que falte), es un cambio de una línea en `cotizar.ts`.
-  - **PREGUNTA 7, literal de la arquitectura:** con `costo_peso = costo_volumen` gana `PESO`, aunque el pedido no tenga reglas de peso. Así, con un único tipo de reglas a precio 0, se pierde la colecta de la otra regla. Está documentado en `calculo.test.ts`.
+  - **PREGUNTA 7, literal de la arquitectura (reemplazada por R7 en `4f96b41`; ver "Actualización por R7"):** con `costo_peso = costo_volumen` gana `PESO`, aunque el pedido no tenga reglas de peso. Así, con un único tipo de reglas a precio 0, se pierde la colecta de la otra regla. Está documentado en `calculo.test.ts`.
   - **PREGUNTAS 8 y 9, formato y nombres:**
     - `detalle_tarifa` sigue el formato propuesto en la PREGUNTA 8.
     - `MOTOR_VERSION` es `'1.0.0'` y `MAX_ALTERNATIVAS` es 20.
@@ -238,6 +243,73 @@ Usar la plantilla de `tickets/_TEMPLATE.md`.
   - H-9 (origen con varios registros) → CR-07.
   - D-4 y D-5 (consistencia de variante y plazo) → MVP-11.
 - **Riesgos y deuda:**
-  - **Incidente de proceso, a revisar primero.** Durante el trabajo, alguien cambió este mismo directorio de trabajo de rama varias veces (reflog: 18:37, 18:40, 18:43 y 19:00:37). Eso revirtió el Plan del ticket y, a las 19:00:37, dejó `HEAD` en `cr-03-deps-carril-b`, con lo que mi primer commit (`3635237`) quedó sobre esa rama. Lo rearmé en `mvp-14-motor-calculo` con cherry-pick en un worktree aparte (`83c6e4b`) y repetí ahí toda la verificación. **`cr-03-deps-carril-b` todavía tiene el commit `3635237` (local, sin push)**. No lo saqué, porque esa rama no es de este ticket: lo decide Franco.
+  - **Incidente de proceso, a revisar primero.** Durante el trabajo, alguien cambió este mismo directorio de trabajo de rama varias veces (reflog: 18:37, 18:40, 18:43 y 19:00:37). Eso revirtió el Plan del ticket y, a las 19:00:37, dejó `HEAD` en `cr-03-deps-carril-b`, con lo que mi primer commit (`3635237`) quedó sobre esa rama. Lo rearmé en `mvp-14-motor-calculo` con cherry-pick en un worktree aparte (`83c6e4b`) y repetí ahí toda la verificación. **`cr-03-deps-carril-b` todavía tiene el commit `3635237` (local, sin push)**. No lo saqué, porque esa rama no es de este ticket: lo decide Franco. *Resuelto:* según Franco, Antigravity lo limpió, y `cr-03-deps-carril-b` volvió a `cf36172` (verificado con `git branch -v`).
   - La guarda de aritmética es heurística (expresiones regulares sobre nombres de montos). Un monto con un nombre fuera de la lista no se detectaría. El auditor puede revisar la lista `MONTO` de `guardas.test.ts`.
   - `CP_AMBIGUO` compara el total redondeado a centavos y el plazo (`null` cuenta como un valor).
+
+### Actualización por R7 (06/10)
+
+- **Qué cambió:** en `calculo.ts`, el criterio es `PESO` si `costo_peso ≥ costo_volumen`, salvo en el empate en que `PESO` no tiene reglas y `VOLUMEN` sí; ahí gana `VOLUMEN`, que conserva su colecta. Si `VOLUMEN` es el que no tiene reglas, el `≥` ya da `PESO`. Los dos tipos sin reglas es `SIN_TARIFA` antes de llegar a ese punto.
+- **Expresión propuesta por Franco:** su texto literal (`costo_peso.gt(costo_volumen) ? 'PESO' : (… ? 'VOLUMEN' : 'PESO')`) devuelve `PESO` también cuando `costo_peso < costo_volumen`, porque cae en la rama `'PESO'` final. Se implementó la regla que describe el texto de R7. Lo probé como mutación: la expresión literal hace fallar el caso de referencia 1 (criterio `VOLUMEN`) y otros 4 tests. La regla anterior (`≥` literal) hace fallar los 2 tests nuevos de R7.
+- **Tests:** el test de la decisión 7 inicial se reemplazó por dos de R7 en `calculo.test.ts`: empate sin reglas de peso → `VOLUMEN` con colecta, y empate sin reglas de volumen → `PESO` con colecta. En `cotizar.test.ts` se agregó el empate a 0 → `VOLUMEN 0–1 m3: tramo $0,00`. Con R7, `evaluateCandidate` ya no produce un criterio sin tramo, así que la rama `PESO: sin tramo` de `tariffDetail` se prueba de forma directa.
+- **Commits** en `mvp-14-motor-calculo`, sin push ni PR: `83c6e4b` (código), `7ab06c0` (nota), `4f96b41` (R7) y el de esta actualización de la nota. Son commits nuevos en lugar de modificar `83c6e4b`, para que los hashes que cita la nota sigan siendo válidos.
+- **Archivos tocados por `4f96b41`:**
+  ```
+   packages/motor/src/calculo.test.ts | 19 +++++++++++++++----
+   packages/motor/src/calculo.ts      |  7 ++++++-
+   packages/motor/src/cotizar.test.ts | 28 ++++++++++++++++++++++++++--
+   3 files changed, 47 insertions(+), 7 deletions(-)
+  ```
+  `git diff --stat origin/main...HEAD` sobre `4f96b41`: los mismos 17 archivos de antes, `17 files changed, 1665 insertions(+), 7 deletions(-)`.
+- **Verificación sobre `4f96b41`**, desde un estado limpio (sin `dist/` ni `coverage/`). `pnpm install --frozen-lockfile && pnpm format && pnpm ci:run` salió con exit 0, y `pnpm format` no cambió ningún archivo:
+  ```
+  Lockfile is up to date, resolution step is skipped
+  Done in 8.7s
+  Checking formatting...
+  All matched files use Prettier code style!
+  apps/web typecheck: Done
+  packages/shared typecheck: Done
+  packages/motor typecheck: Done
+  apps/functions typecheck: Done
+   ✓ packages/motor/src/candidatas.test.ts (27 tests) 48ms
+   ✓ packages/motor/src/cotizar.test.ts (26 tests) 39ms
+   ✓ packages/motor/src/calculo.test.ts (17 tests) 17ms
+   ✓ packages/motor/src/destino.test.ts (7 tests) 6ms
+   ✓ packages/motor/src/tramos.test.ts (7 tests) 5ms
+   ✓ packages/motor/test/guardas.test.ts (8 tests) 26ms
+   ✓ packages/motor/src/index.test.ts (2 tests) 2ms
+   Test Files  28 passed (28)
+        Tests  583 passed (583)
+  packages/shared build: Done
+  apps/web build: ✓ built in 1.57s
+  apps/web build: Done
+  packages/motor build: Done
+  apps/functions build: Done
+  ```
+  Cobertura (`pnpm test:coverage`, exit 0):
+  ```
+        Tests  583 passed (583)
+   ...ages/motor/src |   99.77 |    96.27 |     100 |   99.77 |
+    calculo.ts       |     100 |    96.87 |     100 |     100 | 59
+    candidatas.ts    |     100 |    98.27 |     100 |     100 | 23
+    cotizar.ts       |   98.83 |    95.65 |     100 |   98.83 | 65
+    destino.ts       |     100 |      100 |     100 |     100 |
+    formato.ts       |     100 |      100 |     100 |     100 |
+    ranking.ts       |     100 |      100 |     100 |     100 |
+    tramos.ts        |     100 |     86.2 |     100 |     100 | 23-24
+    types.ts         |       0 |        0 |       0 |       0 |
+  ```
+  Umbral, con el mismo archivo temporal sin tests (borrado después, sin commitear). `test:coverage` salió con exit 1:
+  ```
+   ...ages/motor/src |   87.57 |    95.76 |   95.83 |   87.57 |
+  ERROR: Coverage for lines (87.57%) does not meet "packages/motor/src/**" threshold (90%)
+  ERROR: Coverage for statements (87.57%) does not meet "packages/motor/src/**" threshold (90%)
+  ```
+  Consumo real desde `dist`, con el mismo script, y la misma salida que antes en los dos casos de referencia:
+  ```
+  MOTOR_VERSION 1.0.0
+  Caso 1 total $ 4139.20 | quoteSchema: true
+  Caso 2 VALORIZADO PESO flete $ 530000.00 | PESO 900–1.000 kg: tramo $500.000,00 + excedente 50 kg × $600,00 | quoteSchema: true
+  ```
+  `grep -rniE "km|parada|Number\(|parseFloat" packages/motor/src` no encontró coincidencias (exit 1).
+- **Pendiente para Franco, fuera de alcance:** R7 precisa §3.3 paso 5 de `docs/arquitectura-v3.md`, que dice solo "`PESO` si `costo_peso` ≥ `costo_volumen`". `docs/` es compartido y está congelado, así que hace falta un `CR` de documentación que sume la excepción del empate. Sin ticket por ahora.
