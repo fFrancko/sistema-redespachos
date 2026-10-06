@@ -127,7 +127,22 @@ Archivos a modificar:
 - `packages/motor/src/candidatas.ts`: Corregir precedencia L1 vs L2 (H-3), búsqueda de Date/now (H-4), lógica de `PROVINCIA_DIFIERE` (H-6), vigencia de `HISTORICO`/`BORRADOR` (H-8), y type de `Regla` con `id` (D-3). Formatear con prettier (H-1).
 - `packages/motor/src/candidatas.test.ts`: Agregar tests para alias (H-2), precedencia (H-3), determinismo con doble corrida (H-4), `PROVINCIA_DIFIERE` (H-6), origen desconocido (H-7), vigencia (H-8), e `id` en reglas (D-3). Formatear con prettier (H-1).
 - `packages/motor/src/destino.ts` y `packages/motor/src/destino.test.ts`: Test para alias `CABA` en canalizador (H-2) y test de la segunda rama para ninguno coincide provincia (H-14, opcional/deuda). Formatear con prettier (H-1).
-- `tickets/MVP-13.md`: Reemplazar "## Nota de entrega (la completa el agente al terminar)
+- `tickets/MVP-13.md`: Reemplazar "## Nota de entrega" con la plantilla oficial completando todos los campos (H-5).
+
+## PREGUNTAS
+Franco responde antes de dar el OK al plan. Las recomendaciones son de Claude.
+1. **CP con varios registros en el canalizador y ninguno coincide con la localidad y la provincia del pedido.** La arquitectura no lo dice (hoy el archivo trae un registro por CP, así que el caso es raro). Recomendación: tomar el que coincida solo por provincia si es único; si no, `cobertura_qx = DESCONOCIDA` sin agregar `CP_NO_EN_CANALIZADOR` (el CP existe).
+   **Respuesta de Franco (06/10):** se acepta la recomendación.
+2. **CP de origen ausente del canalizador.** Recomendación: provincia y localidad de origen desconocidas; con `origen_estricto = true` solo aplican reglas `*`; agregar `CP_NO_EN_CANALIZADOR` (el código no distingue origen de destino).
+   **Respuesta de Franco (06/10):** se acepta la recomendación. En los dos modos aplican solo reglas `*`: el respaldo de otra provincia de la decisión 3 no corre con origen desconocido.
+
+---
+
+## Intentos anteriores (descartados)
+Dos intentos del 06/10 se descartaron sin commit: tipos y fixtures inventados (campos que no existen en `shared`), `package.json` reescrito (sin `"type": "module"`, `dist` en CommonJS), códigos de observación inventados, el paso 1 omitido y este ticket sobrescrito. El próximo intento empieza desde `origin/main`.
+
+## Nota de entrega
+
 - **Qué se hizo:** Se resolvieron los hallazgos de auditoría (H-1 a H-8, H-10 y D-3) y luego las correcciones de auditoría N-2 (tipado fuerte de fixtures, sin escapes `any`) y H-4(a) (determinismo con múltiples candidatas usando estricta igualdad).
 - **Commit:** 688a75dd2fa8e3b635a6c5d7d49363ee2401c8fd
 - **Archivos tocados:**
@@ -140,95 +155,95 @@ Archivos a modificar:
 - **Cómo probarlo:** `pnpm install --frozen-lockfile ; pnpm format ; pnpm ci:run`
 - **Resultado de la verificación:**
 ```
-﻿
-> sistema-redespachos@0.0.1 ci:run C:\Users\Franco Aranda\Documents\sistema-redespachos
-> pnpm --filter @sistema-redespachos/shared build && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
-
-
-> @sistema-redespachos/shared@0.0.1 build C:\Users\Franco Aranda\Documents\sistema-redespachos\packages\shared
-> tsc
-
-
-> sistema-redespachos@0.0.1 lint C:\Users\Franco Aranda\Documents\sistema-redespachos
-> eslint apps/web/src apps/functions packages --max-warnings 0
-
-
-> sistema-redespachos@0.0.1 format:check C:\Users\Franco Aranda\Documents\sistema-redespachos
-> prettier --check .
-
-Checking formatting...
-All matched files use Prettier code style!
-
-> sistema-redespachos@0.0.1 typecheck C:\Users\Franco Aranda\Documents\sistema-redespachos
-> pnpm -r typecheck
-
-Scope: 4 of 5 workspace projects
-apps/web typecheck$ tsc --noEmit
-packages/shared typecheck$ tsc --noEmit && tsc -p scripts --noEmit
-apps/web typecheck: Done
-packages/shared typecheck: Done
-apps/functions typecheck$ tsc --noEmit
-packages/motor typecheck$ tsc --noEmit
-packages/motor typecheck: Done
-apps/functions typecheck: Done
-
-> sistema-redespachos@0.0.1 test C:\Users\Franco Aranda\Documents\sistema-redespachos
-> vitest run
-
-
-[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/Franco Aranda/Documents/sistema-redespachos[39m
-
- [32mÔ£ô[39m packages/motor/src/candidatas.test.ts [2m([22m[2m27 tests[22m[2m)[22m[90m 56[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/schemas/orders.test.ts [2m([22m[2m70 tests[22m[2m)[22m[90m 52[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/tms/orderRow.test.ts [2m([22m[2m31 tests[22m[2m)[22m[90m 61[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/tms/headers.test.ts [2m([22m[2m25 tests[22m[2m)[22m[90m 7[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/tms/orderRowRules.test.ts [2m([22m[2m20 tests[22m[2m)[22m[90m 39[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/orderTransitions.test.ts [2m([22m[2m34 tests[22m[2m)[22m[90m 13[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/primitives.test.ts [2m([22m[2m60 tests[22m[2m)[22m[90m 18[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/schemas/tariffs.test.ts [2m([22m[2m41 tests[22m[2m)[22m[90m 19[2mms[22m[39m
- [32mÔ£ô[39m packages/motor/src/destino.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 6[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/schemas/suppliers.test.ts [2m([22m[2m27 tests[22m[2m)[22m[90m 7[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/schemas/proformas.test.ts [2m([22m[2m21 tests[22m[2m)[22m[90m 6[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/schemas/postalRouter.test.ts [2m([22m[2m15 tests[22m[2m)[22m[90m 5[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/tms/amountsAndDates.test.ts [2m([22m[2m43 tests[22m[2m)[22m[90m 5[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/schemas/users.test.ts [2m([22m[2m17 tests[22m[2m)[22m[90m 7[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/errors.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 3[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/schemas/emails.test.ts [2m([22m[2m17 tests[22m[2m)[22m[90m 5[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/normalize.test.ts [2m([22m[2m17 tests[22m[2m)[22m[90m 5[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/schemas/system.test.ts [2m([22m[2m15 tests[22m[2m)[22m[90m 3[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/schemas/reports.test.ts [2m([22m[2m12 tests[22m[2m)[22m[90m 3[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/schemas/importBatches.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 3[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/types/firebase.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 2[2mms[22m[39m
- [32mÔ£ô[39m packages/shared/src/schemas/branches.test.ts [2m([22m[2m2 tests[22m[2m)[22m[90m 1[2mms[22m[39m
- [32mÔ£ô[39m apps/web/src/App.test.tsx [2m([22m[2m1 test[22m[2m)[22m[90m 0[2mms[22m[39m
-
-[2m Test Files [22m [1m[32m23 passed[39m[22m[90m (23)[39m
-[2m      Tests [22m [1m[32m523 passed[39m[22m[90m (523)[39m
-[2m   Start at [22m 17:57:51
-[2m   Duration [22m 3.08s[2m (transform 801ms, setup 0ms, collect 1.89s, tests 325ms, environment 0ms, prepare 285ms)[22m
-
-
-> sistema-redespachos@0.0.1 build C:\Users\Franco Aranda\Documents\sistema-redespachos
-> pnpm -r build
-
-Scope: 4 of 5 workspace projects
-apps/web build$ tsc && vite build
-packages/shared build$ tsc
-apps/web build: [36mvite v5.4.21 [32mbuilding for production...[36m[39m
-apps/web build: transforming...
-packages/shared build: Done
-apps/web build: [32mÔ£ô[39m 31 modules transformed.
-apps/web build: rendering chunks...
-apps/web build: computing gzip size...
-apps/web build: [2mdist/[22m[32mindex.html                 [39m[1m[2m  0.48 kB[22m[1m[22m[2m Ôöé gzip:  0.31 kB[22m
-apps/web build: [2mdist/[22m[35massets/index-C-YIHlKk.css  [39m[1m[2m  0.27 kB[22m[1m[22m[2m Ôöé gzip:  0.22 kB[22m
-apps/web build: [2mdist/[22m[36massets/index-Cmy3f65K.js   [39m[1m[2m142.78 kB[22m[1m[22m[2m Ôöé gzip: 45.86 kB[22m
-apps/web build: [32mÔ£ô built in 1.25s[39m
-apps/web build: Done
-apps/functions build$ tsc
-packages/motor build$ tsc -p tsconfig.build.json
-packages/motor build: Done
-apps/functions build: Done
+﻿
+> sistema-redespachos@0.0.1 ci:run C:\Users\Franco Aranda\Documents\sistema-redespachos
+> pnpm --filter @sistema-redespachos/shared build && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
+
+
+> @sistema-redespachos/shared@0.0.1 build C:\Users\Franco Aranda\Documents\sistema-redespachos\packages\shared
+> tsc
+
+
+> sistema-redespachos@0.0.1 lint C:\Users\Franco Aranda\Documents\sistema-redespachos
+> eslint apps/web/src apps/functions packages --max-warnings 0
+
+
+> sistema-redespachos@0.0.1 format:check C:\Users\Franco Aranda\Documents\sistema-redespachos
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+
+> sistema-redespachos@0.0.1 typecheck C:\Users\Franco Aranda\Documents\sistema-redespachos
+> pnpm -r typecheck
+
+Scope: 4 of 5 workspace projects
+apps/web typecheck$ tsc --noEmit
+packages/shared typecheck$ tsc --noEmit && tsc -p scripts --noEmit
+apps/web typecheck: Done
+packages/shared typecheck: Done
+apps/functions typecheck$ tsc --noEmit
+packages/motor typecheck$ tsc --noEmit
+packages/motor typecheck: Done
+apps/functions typecheck: Done
+
+> sistema-redespachos@0.0.1 test C:\Users\Franco Aranda\Documents\sistema-redespachos
+> vitest run
+
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/Franco Aranda/Documents/sistema-redespachos[39m
+
+ [32mÔ£ô[39m packages/motor/src/candidatas.test.ts [2m([22m[2m27 tests[22m[2m)[22m[90m 56[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/schemas/orders.test.ts [2m([22m[2m70 tests[22m[2m)[22m[90m 52[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/tms/orderRow.test.ts [2m([22m[2m31 tests[22m[2m)[22m[90m 61[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/tms/headers.test.ts [2m([22m[2m25 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/tms/orderRowRules.test.ts [2m([22m[2m20 tests[22m[2m)[22m[90m 39[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/orderTransitions.test.ts [2m([22m[2m34 tests[22m[2m)[22m[90m 13[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/primitives.test.ts [2m([22m[2m60 tests[22m[2m)[22m[90m 18[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/schemas/tariffs.test.ts [2m([22m[2m41 tests[22m[2m)[22m[90m 19[2mms[22m[39m
+ [32mÔ£ô[39m packages/motor/src/destino.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/schemas/suppliers.test.ts [2m([22m[2m27 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/schemas/proformas.test.ts [2m([22m[2m21 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/schemas/postalRouter.test.ts [2m([22m[2m15 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/tms/amountsAndDates.test.ts [2m([22m[2m43 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/schemas/users.test.ts [2m([22m[2m17 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/errors.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/schemas/emails.test.ts [2m([22m[2m17 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/normalize.test.ts [2m([22m[2m17 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/schemas/system.test.ts [2m([22m[2m15 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/schemas/reports.test.ts [2m([22m[2m12 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/schemas/importBatches.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/types/firebase.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 2[2mms[22m[39m
+ [32mÔ£ô[39m packages/shared/src/schemas/branches.test.ts [2m([22m[2m2 tests[22m[2m)[22m[90m 1[2mms[22m[39m
+ [32mÔ£ô[39m apps/web/src/App.test.tsx [2m([22m[2m1 test[22m[2m)[22m[90m 0[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m23 passed[39m[22m[90m (23)[39m
+[2m      Tests [22m [1m[32m523 passed[39m[22m[90m (523)[39m
+[2m   Start at [22m 17:57:51
+[2m   Duration [22m 3.08s[2m (transform 801ms, setup 0ms, collect 1.89s, tests 325ms, environment 0ms, prepare 285ms)[22m
+
+
+> sistema-redespachos@0.0.1 build C:\Users\Franco Aranda\Documents\sistema-redespachos
+> pnpm -r build
+
+Scope: 4 of 5 workspace projects
+apps/web build$ tsc && vite build
+packages/shared build$ tsc
+apps/web build: [36mvite v5.4.21 [32mbuilding for production...[36m[39m
+apps/web build: transforming...
+packages/shared build: Done
+apps/web build: [32mÔ£ô[39m 31 modules transformed.
+apps/web build: rendering chunks...
+apps/web build: computing gzip size...
+apps/web build: [2mdist/[22m[32mindex.html                 [39m[1m[2m  0.48 kB[22m[1m[22m[2m Ôöé gzip:  0.31 kB[22m
+apps/web build: [2mdist/[22m[35massets/index-C-YIHlKk.css  [39m[1m[2m  0.27 kB[22m[1m[22m[2m Ôöé gzip:  0.22 kB[22m
+apps/web build: [2mdist/[22m[36massets/index-Cmy3f65K.js   [39m[1m[2m142.78 kB[22m[1m[22m[2m Ôöé gzip: 45.86 kB[22m
+apps/web build: [32mÔ£ô built in 1.25s[39m
+apps/web build: Done
+apps/functions build$ tsc
+packages/motor build$ tsc -p tsconfig.build.json
+packages/motor build: Done
+apps/functions build: Done
 
 ```
 - **Consumo real:**
