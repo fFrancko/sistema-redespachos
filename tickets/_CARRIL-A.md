@@ -13,17 +13,19 @@
 | 2 | `MVP-14` | Tramos, Mayor Valor, colecta, seguro, IVA, ranking, `cotizar` | Pro · alto | Opus 5.5 · xhigh · adicional | 13 | **Escrito** |
 | 3 | `MVP-15` | Casos dorados sintéticos y regresión en CI | Pro · medio | Opus 5.5 · high | 14 | **Escrito** |
 | 4 | `CR-02` | `origen_tms` completo en pedidos con error (D36) | Pro · medio | Opus 5.5 · high | Cierre Ola 0 | **Escrito** (puede solaparse con 14 o 15) |
-| 5 | `MVP-10` | Canalizador de CP y `solicitudes_cp` | — | — | B: MVP-31, 07, 08 | Se escribe cuando B entregue 07 |
-| 6 | `MVP-11` | Excel maestro de tarifas, validaciones, publicación | — | — | 10; B: MVP-09 | Pendiente |
-| 7 | `MVP-12` | Editor de reglas y diferencias | — | — | 11 | Pendiente |
-| 8 | `MVP-16` | Simulador | — | — | 12, 14 | Pendiente |
-| 9 | `MVP-17` | Importación de pedidos | — | — | 10, `CR-02`; B: 07, 30 | Pendiente |
-| 10 | `MVP-18` | Valorización del lote (trigger) | — | — | 14, 17 | Pendiente |
-| 11 | `MVP-19` | Panel de revisión | — | — | 18 | Pendiente |
-| 12 | `MVP-20` | Cotización manual y salidas de la disputa | — | — | 18 | Pendiente (paralelo con 19) |
-| 13 | `MVP-21` | Informe de modo sombra | — | — | 19 | Pendiente |
+| 5 | `CR-05` | `.gitattributes` con `eol=lf` y `endOfLine: "lf"` en Prettier | Pro · bajo | Sonnet 5.5 · medium · liviana | `CR-01` | **Escrito** (paso 5 del flujo, en la espera de B) |
+| 6 | `CR-06` | Reformateo de los archivos TEMPORAL de `.prettierignore` | Pro · bajo | Sonnet 5.5 · medium · liviana | `CR-05` | **Escrito** (paso 6 del flujo, en la espera de B) |
+| 7 | `MVP-10` | Canalizador de CP y `solicitudes_cp` | — | — | B: MVP-31, 07, 08 | Se escribe cuando B entregue 07 |
+| 8 | `MVP-11` | Excel maestro de tarifas, validaciones, publicación | — | — | 10; B: MVP-09 | Pendiente |
+| 9 | `MVP-12` | Editor de reglas y diferencias | — | — | 11 | Pendiente |
+| 10 | `MVP-16` | Simulador | — | — | 12, 14 | Pendiente |
+| 11 | `MVP-17` | Importación de pedidos | — | — | 10, `CR-02`; B: 07, 30 | Pendiente |
+| 12 | `MVP-18` | Valorización del lote (trigger) | — | — | 14, 17 | Pendiente |
+| 13 | `MVP-19` | Panel de revisión | — | — | 18 | Pendiente |
+| 14 | `MVP-20` | Cotización manual y salidas de la disputa | — | — | 18 | Pendiente (paralelo con 19) |
+| 15 | `MVP-21` | Informe de modo sombra | — | — | 19 | Pendiente |
 
-Los tickets 5 a 13 se escriben cuando su dependencia del Carril B esté cerca de cerrarse, para que cada uno refleje el código real (lección 7 de la Ola 0: tickets escritos demasiado temprano quedan desactualizados).
+Los tickets 7 a 15 se escriben cuando su dependencia del Carril B esté cerca de cerrarse, para que cada uno refleje el código real (lección 7 de la Ola 0: tickets escritos demasiado temprano quedan desactualizados).
 
 ## Decisiones que Franco tiene que responder antes de dar el OK a cada plan
 | Ticket | Pregunta | Recomendación |

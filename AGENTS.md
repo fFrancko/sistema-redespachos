@@ -49,16 +49,16 @@ Si dos fuentes se contradicen, **no decidas**: seguí la de menor número, dejá
 5. Verificá con **la misma secuencia que CI**, desde un estado limpio (sin `dist/` previos):
    ```bash
    pnpm install --frozen-lockfile
-   pnpm --filter @sistema-redespachos/shared build
-   pnpm lint && pnpm typecheck && pnpm test && pnpm build
+   pnpm format
+   pnpm ci:run
    ```
-   Si tocás reglas o Functions, corré los tests con emuladores (`pnpm exec firebase emulators:exec --only auth,firestore --project demo-qx-ci "pnpm test"`). `pnpm ci:run` todavía **no** construye `shared` primero: no lo uses como sustituto de la secuencia de arriba.
+   `pnpm format` deja con el estilo de Prettier todo lo que creaste o tocaste, tickets incluidos. `pnpm ci:run` corre, en el mismo orden que CI, `Build shared`, lint, format check, typecheck, test y build. Si tocás reglas o Functions, corré también los tests con emuladores (`pnpm exec firebase emulators:exec --only auth,firestore --project demo-qx-ci "pnpm test"`).
 6. **Commiteá en tu rama. No pushees ni abras PR:** Franco revisa el diff, pushea y abre la PR. Completá la nota de entrega en el ticket (plantilla en `tickets/_TEMPLATE.md`) con el hash del commit.
 7. **Detenete.** No empieces otro ticket en la misma conversación.
 
 ## 6. Definición de terminado
 - Criterio de aceptación del ticket cumplido, literalmente, con evidencia (comando o test que lo prueba). Si el ticket lo copió de la arquitectura §4, verificá también contra la arquitectura.
-- Lint, typecheck, tests y build en verde con la secuencia del punto 5.5, pegando la salida real. Nunca afirmes "pasa" ni "CI verde" sin haberlo corrido o visto.
+- La secuencia del punto 5.5 en verde (`Build shared`, lint, format check, typecheck, tests y build), pegando la salida real. Nunca afirmes "pasa" ni "CI verde" sin haberlo corrido o visto.
 - Si tu código es consumido por otro paquete o corre en Node (Functions, scripts), probaste el consumo real: import desde el consumidor y ejecución con Node, no solo typecheck.
 - Sin archivos fuera del alcance (`git diff --stat origin/main...HEAD`).
 - Nota de entrega completa, con decisiones tomadas, riesgos, y **lo que quedó fuera del alcance con el ticket al que va** (o "sin ticket").

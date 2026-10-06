@@ -9,8 +9,8 @@ Cada fila es un paso. Los dos tickets de la misma fila se pueden largar juntos. 
 | 2 | MVP-14 | CR-03 | A: 13 · B: CR-01 |
 | 3 | MVP-15 | MVP-31 | A: 14 · B: CR-01 |
 | 4 | CR-02 | MVP-05 | B: CR-03 |
-| 5 | ⏸ espera | MVP-32 | B: 31 y 05 |
-| 6 | ⏸ espera | MVP-08 | B: 31 |
+| 5 | CR-05 | MVP-32 | A: CR-01 · B: 31 y 05 |
+| 6 | CR-06 | MVP-08 | A: CR-05 (y copias locales refrescadas) · B: 31 |
 | 7 | ⏸ espera | MVP-06 | B: 05 y 08 |
 | 8 | ⏸ espera | MVP-07 | B: 06 |
 | 9 | MVP-10 | MVP-30 | A: 31, 07, 08 · B: 06, 07 |
@@ -28,7 +28,9 @@ Cada fila es un paso. Los dos tickets de la misma fila se pueden largar juntos. 
 ## Reglas
 1. **Nunca dos tickets del mismo carril a la vez:** cada uno espera la auditoría y el merge del anterior.
 2. **Entre carriles, sí en paralelo**, salvo en las filas con ⏸.
-3. **Los ⏸ de A (pasos 5 a 8 y 10)** son esperas a la infraestructura de B. Gemini no queda ocioso: en esos pasos audita los tickets de B.
+3. **Los ⏸ de A (pasos 7, 8 y 10)** son esperas a la infraestructura de B. Gemini no queda ocioso: en esos pasos audita los tickets de B. En los pasos 5 y 6, A aprovecha la espera para los dos `CR` de formato (CR-05 y CR-06), que no dependen de B.
 4. **Auditorías:** cuando un ticket termina, abrí la auditoría en una conversación nueva del otro agente aunque ese agente esté con su propio ticket. Son conversaciones independientes.
-5. **Archivos compartidos** (CR-01, CR-03, MVP-31, MVP-32, CR-04, CR-02 y el `vitest.config.ts` de MVP-14): el que se mergea segundo hace rebase antes de entregar.
+5. **Archivos compartidos** (CR-01, CR-03, MVP-31, MVP-32, CR-04, CR-02, CR-05, CR-06 y el `vitest.config.ts` de MVP-14): el que se mergea segundo hace rebase antes de entregar.
 6. **Si un ticket se atrasa,** buscá su fila: todo lo que dice "Requiere" ese ticket se corre un paso; lo demás sigue.
+7. **Después de CR-05:** Franco corre el refresco de finales de línea (punto 5 de CR-05) en cada copia local, siempre con `git status` vacío. Hasta hacerlo, `pnpm format:check` puede fallar en local aunque CI esté en verde.
+8. **Formato:** todo archivo nuevo, tickets incluidos, pasa por `pnpm format` antes del commit. Si no, el paso `Format check` de CI falla. Después de CR-06 vale para todos los archivos del repo.
