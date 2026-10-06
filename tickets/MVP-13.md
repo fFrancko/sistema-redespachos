@@ -55,7 +55,66 @@ Agregados:
 10. **Fuera de alcance (MVP-14):** tramos, peso y volumen del pedido, descartes (`PESO_EXCEDIDO_SIN_REGLA`, `VOLUMEN_EXCEDIDO_SIN_REGLA`, `SIN_TARIFA`), montos, estado final del pedido.
 
 ## Plan
-<lo completa el agente antes de codear: cita las firmas reales de `shared` que va a usar y la lista de archivos a tocar; Franco da el OK>
+Archivos a modificar:
+- `packages/motor/package.json`: Eliminar dependencia `zod` y agregar `exports` apuntando a `./dist/index.js` y tipos; cambiar los scripts si es necesario.
+- `packages/motor/tsconfig.json`: Agregar `noEmit: false`, `module: "NodeNext"`, `moduleResolution: "NodeNext"` y evitar que los tests vayan a `dist` excluyendo `"src/**/*.test.ts"`.
+- `pnpm-lock.yaml`: Actualizado al ejecutar `pnpm remove zod --filter @sistema-redespachos/motor`.
+- `packages/motor/src/types.ts`: Crear y exportar tipos del motor.
+- `packages/motor/src/destino.ts`: Implementar lógica del paso 1.
+- `packages/motor/src/destino.test.ts`: Tests para el paso 1.
+- `packages/motor/src/candidatas.ts`: Implementar lógica del paso 2 (`seleccionarCandidatas(pedido, contexto)`).
+- `packages/motor/src/candidatas.test.ts`: Tests para el paso 2 y criterios de aceptación.
+- `packages/motor/src/index.ts`: Reexportar los miembros públicos.
+
+Tipos compuestos desde `shared` que usaré:
+```typescript
+import type { 
+  Order, 
+  TariffRule, 
+  PostalRouterEntry, 
+  Supplier, 
+  Tariff,
+  QuoteAlternative
+} from '@sistema-redespachos/shared';
+
+export type MotorOrderInput = Pick<Order, 
+  | 'cp_destino_norm' 
+  | 'localidad_destino_norm' 
+  | 'provincia_destino_norm' 
+  | 'codigo_postal_origen'
+>;
+
+export interface MotorContext {
+  canalizador: PostalRouterEntry[];
+  proveedores: Supplier[];
+  tarifarios: Array<{ id: string } & Tariff>;
+  reglas: TariffRule[];
+  fecha_referencia: string;
+  origen_estricto: boolean;
+}
+
+export interface Candidate {
+  id_proveedor: string;
+  variante_id: string;
+  tarifario_id: string;
+  variante: QuoteAlternative['variante'];
+  reglas_peso: TariffRule[];
+  reglas_volumen: TariffRule[];
+}
+
+export interface MotorStep12Result {
+  canalizador: NonNullable<Order['canalizador']>;
+  provincia_origen?: string;
+  localidad_origen?: string;
+  observaciones: Order['observaciones'];
+  candidatas: Candidate[];
+}
+```
+
+Archivos a borrar:
+- `packages/motor/src/schemas/`
+- `packages/motor/src/cotizacion/`
+- `packages/motor/src/tarifas/`
 
 ## PREGUNTAS
 Franco responde antes de dar el OK al plan. Las recomendaciones son de Claude.
