@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { quoteAlternativeSchema, quoteSchema } from '@sistema-redespachos/shared';
 import { cotizar, MAX_ALTERNATIVAS, MOTOR_VERSION } from './cotizar.js';
+import { evaluateCandidate } from './calculo.js';
+import { tariffDetail } from './formato.js';
 import type { QuoteResult } from './types.js';
 import {
   canalizadorEntry,
@@ -396,13 +398,35 @@ describe('cotizar: detalle_tarifa', () => {
     );
   });
 
-  it('criterio sin tramo (decisión 7)', () => {
+  it('R7: empate a 0 sin reglas de peso describe el tramo de volumen', () => {
     const ctx = contexto({
       proveedores: [proveedor('AAA')],
       reglas: [
         regla({ id: 'V', tipo: 'VOLUMEN', min: '0', max: '1', precio: '0', proveedor: 'AAA' }),
       ],
     });
-    expect(cotizar(pedido(), ctx).cotizacion?.detalle_tarifa).toBe('PESO: sin tramo');
+    expect(cotizar(pedido(), ctx).cotizacion).toMatchObject({
+      criterio: 'VOLUMEN',
+      regla_peso_id: null,
+      regla_volumen_id: 'V',
+      detalle_tarifa: 'VOLUMEN 0–1 m3: tramo $0,00',
+    });
+  });
+
+  it('criterio sin tramo: con R7 no lo produce evaluateCandidate, pero tariffDetail lo informa', () => {
+    const r = evaluateCandidate(
+      {
+        id_proveedor: 'AAA',
+        variante_id: '2000|ROSARIO|Z1',
+        tarifario_id: 'TAR_AAA',
+        variante: { localidad: 'ROSARIO', zona: 'Z1', plazo_estimado_dias: null },
+        reglas_peso: [],
+        reglas_volumen: [regla({ id: 'V', tipo: 'VOLUMEN', min: '0', max: '1', precio: '0' })],
+      },
+      proveedor('AAA'),
+      pedido(),
+    );
+    if (!r.valida) throw new Error('esperaba una candidata válida');
+    expect(tariffDetail({ ...r.costo, criterio: 'PESO' })).toBe('PESO: sin tramo');
   });
 });

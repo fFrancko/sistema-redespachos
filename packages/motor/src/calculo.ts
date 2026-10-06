@@ -83,7 +83,12 @@ export function evaluateCandidate(
 
   const costo_peso = componentCost(tramo_peso);
   const costo_volumen = componentCost(tramo_volumen);
-  const criterio: Criterion = costo_peso.gte(costo_volumen) ? 'PESO' : 'VOLUMEN';
+  // §3.3 paso 5: PESO si costo_peso ≥ costo_volumen. Decisión de Franco (R7, 06/10): en el
+  // empate, si PESO no tiene reglas y VOLUMEN sí, gana VOLUMEN (para no perder su colecta).
+  const empateSinReglasDePeso =
+    costo_peso.eq(costo_volumen) && tramo_peso === null && tramo_volumen !== null;
+  const criterio: Criterion =
+    costo_peso.gte(costo_volumen) && !empateSinReglasDePeso ? 'PESO' : 'VOLUMEN';
   const flete = Decimal.max(costo_peso, costo_volumen);
   const colecta = collectionCost(criterio === 'PESO' ? tramo_peso : tramo_volumen);
   const seguro = insuranceCost(proveedor, pedido.valor_declarado);

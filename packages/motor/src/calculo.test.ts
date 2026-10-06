@@ -126,18 +126,29 @@ describe('Pasos 4 y 5: evaluateCandidate', () => {
     expect(pesos(ganaVolumenSinColecta.colecta)).toBe('0.00');
   });
 
-  it('un tipo sin reglas aporta 0; con costo_volumen 0 el ≥ literal da PESO sin tramo (decisión 7)', () => {
+  it('un tipo sin reglas aporta 0', () => {
     const soloVolumen = costo([{ id: 'V', tipo: 'VOLUMEN', min: '0', max: '1', precio: '80' }]);
     expect(pesos(soloVolumen.costo_peso)).toBe('0.00');
     expect(soloVolumen.criterio).toBe('VOLUMEN');
+  });
 
+  it('R7: en el empate, si PESO no tiene reglas y VOLUMEN sí, gana VOLUMEN y conserva su colecta', () => {
     const volumenCero = costo([
       { id: 'V', tipo: 'VOLUMEN', min: '0', max: '1', precio: '0', colecta: '50' },
     ]);
-    expect(volumenCero.criterio).toBe('PESO');
     expect(volumenCero.tramo_peso).toBeNull();
-    expect(pesos(volumenCero.colecta)).toBe('0.00');
-    expect(pesos(volumenCero.total)).toBe('0.00');
+    expect(volumenCero.criterio).toBe('VOLUMEN');
+    expect(pesos(volumenCero.colecta)).toBe('50.00');
+    expect(pesos(volumenCero.total)).toBe('50.00');
+  });
+
+  it('R7: en el empate, si VOLUMEN no tiene reglas y PESO sí, sigue ganando PESO', () => {
+    const pesoCero = costo([
+      { id: 'P', tipo: 'PESO', min: '0', max: '10', precio: '0', colecta: '30' },
+    ]);
+    expect(pesoCero.tramo_volumen).toBeNull();
+    expect(pesoCero.criterio).toBe('PESO');
+    expect(pesos(pesoCero.colecta)).toBe('30.00');
   });
 
   it('D8: sin aplica_seguro, o sin valor declarado, el seguro es 0; valor 0 da 0', () => {
