@@ -154,9 +154,6 @@ importers:
       decimal.js:
         specifier: ^10.4.3
         version: 10.6.0
-      zod:
-        specifier: ^3.22.0
-        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
