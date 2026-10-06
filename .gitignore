@@ -33,14 +33,6 @@ coverage/
 # Tests
 .vitest/
 
-# Ingesta de tarifas: tablas maestras generadas y archivos de trabajo.
-# Se regeneran con pnpm run transformar-tarifas.
-/input/
-output/
-/tabla_maestra.json
-test/fixtures/out/
-test/fixtures/perfilar-out.txt
-
 # Compilado de Firebase Functions (el codigo fuente va en apps/functions/src/,
 # incluida apps/functions/src/lib/).
 apps/functions/lib/
@@ -50,6 +42,6 @@ apps/functions/lib/
 *.xlsx
 *.xls
 *.xlsm
-# Excepcion: fixtures SINTETICOS, regenerables con pnpm run fixtures.
-!test/fixtures/input/*.xlsx
-!test/fixtures/bad/*.xlsx
+
+# Config local de Claude Code
+.claude/settings.local.json

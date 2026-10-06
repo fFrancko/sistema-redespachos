@@ -1,0 +1,9 @@
+{
+  "singleQuote": true,
+  "printWidth": 100,
+  "endOfLine": "auto",
+  "overrides": [
+    { "files": ["*.yml", "*.yaml"], "options": { "singleQuote": false } },
+    { "files": ["pnpm-workspace.yaml"], "options": { "singleQuote": true } }
+  ]
+}

@@ -9,6 +9,10 @@ updates:
     open-pull-requests-limit: 10
     reviewers:
       - fFrancko
+    # Las majors entran a mano como `CR: deps`.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: "/"
@@ -18,3 +22,7 @@ updates:
       time: "09:00"
     reviewers:
       - fFrancko
+    # Las majors entran a mano como `CR: deps`.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
