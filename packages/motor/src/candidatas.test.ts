@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
 import {
   orderSchema,
@@ -6,6 +5,8 @@ import {
   postalRouterEntrySchema,
   supplierSchema,
   tariffSchema,
+  Tariff,
+  TariffRule,
 } from '@sistema-redespachos/shared';
 import { seleccionarCandidatas } from './candidatas.js';
 import type { MotorOrderInput, MotorContext } from './types.js';
@@ -50,7 +51,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
       ...overrides,
     });
 
-  const createTarifario = (overrides: Record<string, unknown>) => {
+  const createTarifario = (overrides: Record<string, unknown>): { id: string } & Tariff => {
     const data = tariffSchema.parse({
       id_proveedor: 'PROV1',
       version: 1,
@@ -61,10 +62,10 @@ describe('Paso 2: seleccionarCandidatas', () => {
       creado_en: '2026-10-06T00:00:00.000Z',
       ...overrides,
     });
-    return { id: (overrides.id as string) || 'TAR1', ...data } as any;
+    return { id: String(overrides.id ?? 'TAR1'), ...data };
   };
 
-  const createRegla = (overrides: Record<string, unknown>) => {
+  const createRegla = (overrides: Record<string, unknown>): { id: string } & TariffRule => {
     const data = tariffRuleSchema.parse({
       tarifario_id: 'TAR1',
       id_proveedor: 'PROV1',
@@ -91,7 +92,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
       actualizado_en: '2026-10-06T00:00:00.000Z',
       ...overrides,
     });
-    return { id: overrides.id || 'REGLA1', ...data } as any;
+    return { id: String(overrides.id ?? 'REGLA1'), ...data };
   };
 
   const baseOrder = {
@@ -280,7 +281,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
     const inputModificado = { ...inputNormal };
     // Cambiar los "crudos" acá en el tipo de entrada del motor (si existieran) no tendría efecto
     // porque ni siquiera se los pasamos a seleccionarCandidatas.
-    // Para demostrarlo, llamamos con el mismo inputNormal modificado con as any:
+    // Para demostrarlo, llamamos con el mismo inputNormal modificado con:
     const res2 = seleccionarCandidatas(
       {
         ...inputModificado,
@@ -310,7 +311,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
         }),
       ],
     };
-    const res = seleccionarCandidatas(pedido, ctx as any);
+    const res = seleccionarCandidatas(pedido, ctx);
     // normProvincia('CAPITAL FEDERAL', { contraCanalizador: true }) es 'BUENOS AIRES',
     // que coincide con pedido.provincia_destino_norm ('BUENOS AIRES')
     expect(res.candidatas).toHaveLength(1);
@@ -322,7 +323,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
       ...baseContext,
       reglas: [createRegla({ codigo_postal_destino: '9999', variante_id: '9999|ROSARIO|Z1' })],
     };
-    const res = seleccionarCandidatas(pedido, ctx as any);
+    const res = seleccionarCandidatas(pedido, ctx);
     expect(res.canalizador.cobertura_qx).toBe('DESCONOCIDA');
     expect(res.observaciones).toContain('CP_NO_EN_CANALIZADOR');
     expect(res.candidatas).toHaveLength(1); // La selección sigue por CP
@@ -381,7 +382,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
       origen_estricto: false,
       reglas: [createRegla({ provincia_origen: 'BUENOS AIRES', localidad_origen: undefined })],
     };
-    const res = seleccionarCandidatas(pedido, ctx as any);
+    const res = seleccionarCandidatas(pedido, ctx);
     // Debe tomar las reglas de BUENOS AIRES
     expect(res.candidatas[0].reglas_peso).toHaveLength(1);
     expect(res.candidatas[0].reglas_peso[0].provincia_origen).toBe('BUENOS AIRES');
@@ -406,7 +407,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
         createRegla({ provincia_origen: 'CORDOBA', localidad_origen: undefined, kg_max: '20' }),
       ],
     };
-    const res = seleccionarCandidatas(pedido, ctx as any);
+    const res = seleccionarCandidatas(pedido, ctx);
     // No toma ninguna por ambigüedad
     expect(res.candidatas[0].reglas_peso).toHaveLength(0);
   });
@@ -418,7 +419,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
       origen_estricto: false,
       reglas: [createRegla({ provincia_origen: 'BUENOS AIRES', localidad_origen: 'LA PLATA' })],
     };
-    const res = seleccionarCandidatas(pedido, ctx as any);
+    const res = seleccionarCandidatas(pedido, ctx);
     expect(res.candidatas[0].reglas_peso).toHaveLength(0);
   });
 
@@ -435,7 +436,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
     // Las reglas de otras provincias sin localidad_origen son solo BUENOS AIRES.
     // La regla de CORDOBA tiene localidad, por ende se ignora en el fallback.
     // Luego provinciasDistintas.size === 1 (BUENOS AIRES). Toma las de BUENOS AIRES.
-    const res = seleccionarCandidatas(pedido, ctx as any);
+    const res = seleccionarCandidatas(pedido, ctx);
     expect(res.candidatas[0].reglas_peso).toHaveLength(1);
     expect(res.candidatas[0].reglas_peso[0].provincia_origen).toBe('BUENOS AIRES');
   });
@@ -448,7 +449,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
       reglas: [createRegla({ provincia_origen: 'BUENOS AIRES', localidad_origen: undefined })],
     };
     // Origen desconocido -> provincia_origen es undefined. El fallback requiere provincia_origen !== undefined.
-    const res = seleccionarCandidatas(pedido, ctx as any);
+    const res = seleccionarCandidatas(pedido, ctx);
     expect(res.candidatas[0].reglas_peso).toHaveLength(0);
   });
 
@@ -473,7 +474,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
         }),
       ],
     };
-    const res = seleccionarCandidatas(pedido, ctx as any);
+    const res = seleccionarCandidatas(pedido, ctx);
     expect(res.candidatas).toHaveLength(1);
     expect(res.candidatas[0].variante_id).toBe('2000|RIOJA|Z1');
     expect(res.observaciones).not.toContain('PROVINCIA_DIFIERE');
@@ -500,7 +501,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
         }),
       ],
     };
-    const res = seleccionarCandidatas(pedido, ctx as any);
+    const res = seleccionarCandidatas(pedido, ctx);
     expect(res.candidatas).toHaveLength(1);
     expect(res.candidatas[0].variante_id).toBe('2000|RETIRO|Z1');
     expect(res.observaciones).not.toContain('PROVINCIA_DIFIERE');
@@ -516,7 +517,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
         createRegla({ id: 'R3', localidad_origen: undefined, provincia_origen: '*' }),
       ],
     };
-    const res = seleccionarCandidatas(pedido, ctx as any);
+    const res = seleccionarCandidatas(pedido, ctx);
     expect(res.candidatas[0].reglas_peso).toHaveLength(1);
     expect(res.candidatas[0].reglas_peso[0].id).toBe('R1');
   });
@@ -530,7 +531,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
         createRegla({ id: 'R2', localidad_origen: undefined, provincia_origen: 'BUENOS AIRES' }),
       ],
     };
-    const res = seleccionarCandidatas(pedido, ctx as any);
+    const res = seleccionarCandidatas(pedido, ctx);
     expect(res.candidatas[0].reglas_peso).toHaveLength(1);
     expect(res.candidatas[0].reglas_peso[0].id).toBe('R2');
   });
@@ -544,8 +545,8 @@ describe('Paso 2: seleccionarCandidatas', () => {
         createRegla({ id: 'R2', variante_id: '2000|ROSARIO|Z1' }),
       ],
     };
-    const res1 = seleccionarCandidatas(pedido, ctx as any);
-    const res2 = seleccionarCandidatas(pedido, ctx as any);
+    const res1 = seleccionarCandidatas(pedido, ctx);
+    const res2 = seleccionarCandidatas(pedido, ctx);
     expect(res1).toStrictEqual(res2);
   });
 
@@ -578,7 +579,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
         }),
       ],
     };
-    const res = seleccionarCandidatas(pedido, ctx as any);
+    const res = seleccionarCandidatas(pedido, ctx);
     expect(res.candidatas).toHaveLength(2);
     expect(res.observaciones.filter((o: string) => o === 'PROVINCIA_DIFIERE')).toHaveLength(1);
   });
@@ -593,12 +594,12 @@ describe('Paso 2: seleccionarCandidatas', () => {
         createRegla({ id: 'R2', provincia_origen: '*', localidad_origen: undefined }),
       ],
     };
-    const res = seleccionarCandidatas(pedido, ctx as any);
+    const res = seleccionarCandidatas(pedido, ctx);
     expect(res.candidatas[0].reglas_peso).toHaveLength(1);
     expect(res.candidatas[0].reglas_peso[0].id).toBe('R2');
 
     const ctxEstricto = { ...ctx, origen_estricto: true };
-    const resEstricto = seleccionarCandidatas(pedido, ctxEstricto as any);
+    const resEstricto = seleccionarCandidatas(pedido, ctxEstricto);
     expect(resEstricto.candidatas[0].reglas_peso).toHaveLength(1);
     expect(resEstricto.candidatas[0].reglas_peso[0].id).toBe('R2');
   });
@@ -619,7 +620,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
       ],
       reglas: [baseRegla],
     };
-    expect(seleccionarCandidatas(pedido, ctx as any).candidatas).toHaveLength(1);
+    expect(seleccionarCandidatas(pedido, ctx).candidatas).toHaveLength(1);
 
     const regla2 = createRegla({ id: 'R2', tarifario_id: 'T2' });
     ctx = {
@@ -635,16 +636,16 @@ describe('Paso 2: seleccionarCandidatas', () => {
       ],
       reglas: [baseRegla, regla2],
     };
-    const res2 = seleccionarCandidatas(pedido, ctx as any);
+    const res2 = seleccionarCandidatas(pedido, ctx);
     expect(res2.candidatas).toHaveLength(1);
     expect(res2.candidatas[0].tarifario_id).toBe('T2');
 
     ctx = {
       ...baseContext,
-      tarifarios: [createTarifario({ id: 'T1', estado: 'BORRADOR' as any })],
+      tarifarios: [createTarifario({ id: 'T1', estado: 'BORRADOR' })],
       reglas: [baseRegla],
     };
-    expect(seleccionarCandidatas(pedido, ctx as any).candidatas).toHaveLength(0);
+    expect(seleccionarCandidatas(pedido, ctx).candidatas).toHaveLength(0);
   });
 
   it('Test id en reglas (D-3)', () => {
@@ -663,7 +664,7 @@ describe('Paso 2: seleccionarCandidatas', () => {
         }),
       ],
     };
-    const res = seleccionarCandidatas(pedido, ctx as any);
+    const res = seleccionarCandidatas(pedido, ctx);
     expect(res.candidatas[0].reglas_peso[0].id).toBe('REGLA_CON_ID_1');
     expect(res.candidatas[0].reglas_volumen[0].id).toBe('REGLA_CON_ID_2');
   });
