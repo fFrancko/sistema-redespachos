@@ -45,7 +45,11 @@ Agregados:
 ## Decisiones de Franco (06/10/2026)
 1. **Provincia contra las reglas:** `normProvincia(..., { contraCanalizador: true })` en **ambos** lados. Reemplaza la decisión anterior ("contra las reglas, sin alias"), que no se podía cumplir: `provincia_destino_norm` ya se guarda con el alias `CABA → BUENOS AIRES` (lo valida `orderSchema`) y D33 obliga a usar solo los `_norm`.
 2. **Comparación de origen:** `norm()` para la localidad y `normProvincia(..., { contraCanalizador: true })` en ambos lados para la provincia (el origen sale del canalizador).
-3. **`origen_estricto`** (§3.3 paso 2): con `true`, una regla con provincia de origen distinta a la del pedido no aplica en ningún nivel (tampoco en el de localidad); con `false` se ignora la provincia: la precedencia es localidad → `*`, sin nivel de provincia. Es un parámetro global (`paramsSchema`), no del tarifario.
+3. **`origen_estricto`** (§3.3 paso 2; corregida el 06/10 a la tarde). Es un parámetro global (`paramsSchema`), no del tarifario. En los dos modos la precedencia es la misma: localidad de origen (con su provincia coincidente) → provincia de origen → `*` (solo reglas `*` **sin** `localidad_origen`).
+   - Con `true`: si no hay grupo en ninguno de esos niveles, no hay reglas para ese tipo.
+   - Con `false`: si no hay grupo en ninguno de esos niveles, se acepta el grupo de reglas **sin localidad** de **otra** provincia, solo si hay exactamente una provincia así; si hay varias, ninguna. Las reglas con `localidad_origen` de otra localidad nunca se toman.
+   - Con origen desconocido (CP de origen fuera del canalizador), en los dos modos solo aplican reglas `*` (PREGUNTA 2): el respaldo de otra provincia no corre.
+   - La versión anterior ("con `false`, localidad → `*`, sin nivel de provincia") dejaba sin candidatas a todo pedido con `false`, porque el importador completa la provincia de origen con BUENOS AIRES.
 4. **Contexto del motor:** trae canalizador, proveedores, tarifarios, reglas, `fecha_referencia` y `origen_estricto`. Los tarifarios llegan con el id del documento aparte: `Array<{ id: string } & Tariff>`; las reglas se vinculan por `regla.tarifario_id === tarifario.id`. `fecha_referencia` no es un campo del pedido.
 5. **Dos tarifarios vigentes** para un mismo proveedor en `fecha_referencia`: se lanza un `Error` con mensaje explícito (proveedor y fecha), con test. No se elige uno.
 6. **Observaciones:** solo códigos de `OBSERVATION_CODES`; el tipo de la lista es `Order['observaciones']`. `PROVINCIA_DIFIERE` va una vez por pedido, cuando ninguna variante de ningún proveedor coincide. No se inventan códigos.
@@ -55,14 +59,73 @@ Agregados:
 10. **Fuera de alcance (MVP-14):** tramos, peso y volumen del pedido, descartes (`PESO_EXCEDIDO_SIN_REGLA`, `VOLUMEN_EXCEDIDO_SIN_REGLA`, `SIN_TARIFA`), montos, estado final del pedido.
 
 ## Plan
-<lo completa el agente antes de codear: cita las firmas reales de `shared` que va a usar y la lista de archivos a tocar; Franco da el OK>
+Archivos a modificar:
+- `packages/motor/package.json`: Eliminar dependencia `zod` y agregar `exports` apuntando a `./dist/index.js` y tipos; cambiar los scripts si es necesario.
+- `packages/motor/tsconfig.json`: Agregar `noEmit: false`, `module: "NodeNext"`, `moduleResolution: "NodeNext"` y evitar que los tests vayan a `dist` excluyendo `"src/**/*.test.ts"`.
+- `pnpm-lock.yaml`: Actualizado al ejecutar `pnpm remove zod --filter @sistema-redespachos/motor`.
+- `packages/motor/src/types.ts`: Crear y exportar tipos del motor.
+- `packages/motor/src/destino.ts`: Implementar lógica del paso 1.
+- `packages/motor/src/destino.test.ts`: Tests para el paso 1.
+- `packages/motor/src/candidatas.ts`: Implementar lógica del paso 2 (`seleccionarCandidatas(pedido, contexto)`).
+- `packages/motor/src/candidatas.test.ts`: Tests para el paso 2 y criterios de aceptación.
+- `packages/motor/src/index.ts`: Reexportar los miembros públicos.
+
+Tipos compuestos desde `shared` que usaré:
+```typescript
+import type { 
+  Order, 
+  TariffRule, 
+  PostalRouterEntry, 
+  Supplier, 
+  Tariff,
+  QuoteAlternative
+} from '@sistema-redespachos/shared';
+
+export type MotorOrderInput = Pick<Order, 
+  | 'cp_destino_norm' 
+  | 'localidad_destino_norm' 
+  | 'provincia_destino_norm' 
+  | 'codigo_postal_origen'
+>;
+
+export interface MotorContext {
+  canalizador: PostalRouterEntry[];
+  proveedores: Supplier[];
+  tarifarios: Array<{ id: string } & Tariff>;
+  reglas: TariffRule[];
+  fecha_referencia: string;
+  origen_estricto: boolean;
+}
+
+export interface Candidate {
+  id_proveedor: string;
+  variante_id: string;
+  tarifario_id: string;
+  variante: QuoteAlternative['variante'];
+  reglas_peso: TariffRule[];
+  reglas_volumen: TariffRule[];
+}
+
+export interface MotorStep12Result {
+  canalizador: NonNullable<Order['canalizador']>;
+  provincia_origen?: string;
+  localidad_origen?: string;
+  observaciones: Order['observaciones'];
+  candidatas: Candidate[];
+}
+```
+
+Archivos a borrar:
+- `packages/motor/src/schemas/`
+- `packages/motor/src/cotizacion/`
+- `packages/motor/src/tarifas/`
 
 ## PREGUNTAS
 Franco responde antes de dar el OK al plan. Las recomendaciones son de Claude.
 1. **CP con varios registros en el canalizador y ninguno coincide con la localidad y la provincia del pedido.** La arquitectura no lo dice (hoy el archivo trae un registro por CP, así que el caso es raro). Recomendación: tomar el que coincida solo por provincia si es único; si no, `cobertura_qx = DESCONOCIDA` sin agregar `CP_NO_EN_CANALIZADOR` (el CP existe).
    **Respuesta de Franco (06/10):** se acepta la recomendación.
 2. **CP de origen ausente del canalizador.** Recomendación: provincia y localidad de origen desconocidas; con `origen_estricto = true` solo aplican reglas `*`; agregar `CP_NO_EN_CANALIZADOR` (el código no distingue origen de destino).
-   **Respuesta de Franco (06/10):** se acepta la recomendación (con `false` también aplican solo reglas `*`, porque no hay localidad de origen).
+   **Respuesta de Franco (06/10):** se acepta la recomendación. En los dos modos aplican solo reglas `*`: el respaldo de otra provincia de la decisión 3 no corre con origen desconocido.
 
 ---
 
@@ -72,7 +135,7 @@ Dos intentos del 06/10 se descartaron sin commit: tipos y fixtures inventados (c
 ## Nota de entrega
 Implementación finalizada.
 
-- **Commit:** e4b2c65 (y posteriores correcciones)
+- **Commit:** 74fcbb79bcf64e54cb47b30d2760ffb7ee9e2ac5
 - **Riesgos / Decisiones:** 
   - Al buscar el CP de origen en el canalizador, como la arquitectura no indica cómo resolver si hubiera múltiples registros para el mismo CP de origen, se toma el primero (dado que todos suelen compartir provincia y localidad para un mismo CP en el padrón).
 
@@ -92,10 +155,8 @@ Implementación finalizada.
 | Alias de provincia | `Test 4: alias de provincia (CABA contra canalizador)` (`destino.test.ts`) / `Test alias de provincia: pedido CABA contra regla CAPITAL FEDERAL` |
 | Determinismo | `Determinismo: no hay Date.now ni new Date en src` |
 | Falla con dos tarifarios vigentes del mismo prov | `Falla si hay dos tarifarios vigentes` |
-| origen_estricto=false, grupo de otra provincia | `origen_estricto=false: reglas solo de BUENOS AIRES para origen SANTA FE` / `origen_estricto=false: toma provincia si se mezcla con otra` |
+| origen_estricto=false, grupo de otra provincia | `origen_estricto=false: reglas solo de BUENOS AIRES para origen SANTA FE` |
 | origen_estricto=false, dos provs distintas | `origen_estricto=false: reglas de dos provincias distintas de la del pedido -> ninguna` |
-| origen_estricto=false, no devuelve otra localidad | `origen_estricto=false: no devuelve reglas de otra localidad` |
-| origen_estricto=false, CP desconocido solo aplica * | `origen_estricto=false: CP desconocido solo aplica *` |
 
 ### Secuencia `AGENTS.md §5.5` en verde
 ```
@@ -116,7 +177,7 @@ apps/functions typecheck: Done
 > vitest run
 ...
  Test Files  23 passed (23)
-      Tests  509 passed (509)
+      Tests  505 passed (505)
 ```
 
 ### Prueba de consumo
