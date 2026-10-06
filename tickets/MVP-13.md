@@ -142,13 +142,17 @@ Implementación finalizada.
 | Por origen_estricto | `Test origen_estricto=true, provincia coincide` / `Test origen_estricto=true, provincia no coincide` |
 | Por vigencia según fecha_referencia (bordes) | `Test vigencia bordes` |
 | Por CP con varias variantes | `Test CP con varias variantes (misma provincia y distinta)` |
+| Dos proveedores con el mismo variante_id | `Dos proveedores con el mismo variante_id dan dos candidatas` |
 | Por CP ausente del canalizador | `CP destino ausente del canalizador` / `CP origen ausente` (ambos en `destino.test.ts`) y `Test CP ausente del canalizador` |
 | Ausencia de caída a grupo más general | `Test precedencia origen y ausencia de caída (origen_estricto=false)` |
+| Grupo * con localidad no se toma como * | `Una regla "* / ROSARIO" no se toma como *` |
 | Proveedor INACTIVO con tarifario vigente | `Test proveedor INACTIVO con tarifario vigente no aparece` |
 | El pedido usa solo los `_norm` (D33) | `Test el pedido usa solo los _norm` |
 | Alias de provincia | `Test 4: alias de provincia (CABA contra canalizador)` (`destino.test.ts`) / `Test alias de provincia: pedido CABA contra regla CAPITAL FEDERAL` |
 | Determinismo | `Determinismo: no hay Date.now ni new Date en src` |
 | Falla con dos tarifarios vigentes del mismo prov | `Falla si hay dos tarifarios vigentes` |
+| origen_estricto=false, grupo de otra provincia | `origen_estricto=false: reglas solo de BUENOS AIRES para origen SANTA FE` |
+| origen_estricto=false, dos provs distintas | `origen_estricto=false: reglas de dos provincias distintas de la del pedido -> ninguna` |
 
 ### Secuencia `AGENTS.md §5.5` en verde
 ```

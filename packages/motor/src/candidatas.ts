@@ -39,9 +39,10 @@ export function seleccionarCandidatas(
 
   const variantesMap = new Map<string, typeof contexto.reglas>();
   for (const r of reglasCP) {
-    const arr = variantesMap.get(r.variante_id) || [];
+    const key = `${r.id_proveedor}|${r.variante_id}`;
+    const arr = variantesMap.get(key) || [];
     arr.push(r);
-    variantesMap.set(r.variante_id, arr);
+    variantesMap.set(key, arr);
   }
 
   let variantesProcesadas = Array.from(variantesMap.values());
@@ -67,41 +68,43 @@ export function seleccionarCandidatas(
     const filtrarPorPrecedencia = (reglas: typeof contexto.reglas) => {
       if (reglas.length === 0) return [];
 
+      const conLocalidad = reglas.filter(
+        (r) =>
+          r.localidad_origen !== undefined &&
+          paso1.localidad_origen !== undefined &&
+          norm(r.localidad_origen) === paso1.localidad_origen &&
+          normProvincia(r.provincia_origen, { contraCanalizador: true }) === paso1.provincia_origen,
+      );
+      if (conLocalidad.length > 0) return conLocalidad;
+
+      const conProvincia = reglas.filter(
+        (r) =>
+          r.localidad_origen === undefined &&
+          r.provincia_origen !== '*' &&
+          paso1.provincia_origen !== undefined &&
+          normProvincia(r.provincia_origen, { contraCanalizador: true }) === paso1.provincia_origen,
+      );
+      if (conProvincia.length > 0) return conProvincia;
+
+      const conAsterisco = reglas.filter(
+        (r) => r.provincia_origen === '*' && r.localidad_origen === undefined,
+      );
+      if (conAsterisco.length > 0) return conAsterisco;
+
       if (!contexto.origen_estricto) {
-        const conLocalidad = reglas.filter(
-          (r) =>
-            r.localidad_origen !== undefined &&
-            paso1.localidad_origen !== undefined &&
-            norm(r.localidad_origen) === paso1.localidad_origen,
+        const reglasOtrasProv = reglas.filter((r) => r.provincia_origen !== '*');
+        const provinciasDistintas = new Set(
+          reglasOtrasProv.map((r) =>
+            normProvincia(r.provincia_origen, { contraCanalizador: true }),
+          ),
         );
-        if (conLocalidad.length > 0) return conLocalidad;
-
-        const conAsterisco = reglas.filter((r) => r.provincia_origen === '*');
-        return conAsterisco;
-      } else {
-        const conLocalidad = reglas.filter(
-          (r) =>
-            r.localidad_origen !== undefined &&
-            paso1.localidad_origen !== undefined &&
-            norm(r.localidad_origen) === paso1.localidad_origen &&
-            normProvincia(r.provincia_origen, { contraCanalizador: true }) ===
-              paso1.provincia_origen,
-        );
-        if (conLocalidad.length > 0) return conLocalidad;
-
-        const conProvincia = reglas.filter(
-          (r) =>
-            r.localidad_origen === undefined &&
-            r.provincia_origen !== '*' &&
-            paso1.provincia_origen !== undefined &&
-            normProvincia(r.provincia_origen, { contraCanalizador: true }) ===
-              paso1.provincia_origen,
-        );
-        if (conProvincia.length > 0) return conProvincia;
-
-        const conAsterisco = reglas.filter((r) => r.provincia_origen === '*');
-        return conAsterisco;
+        if (provinciasDistintas.size === 1) {
+          const sinLocalidad = reglasOtrasProv.filter((r) => r.localidad_origen === undefined);
+          return sinLocalidad.length > 0 ? sinLocalidad : reglasOtrasProv;
+        }
       }
+
+      return [];
     };
 
     const reglasPesoFiltradas = filtrarPorPrecedencia(reglasPeso);

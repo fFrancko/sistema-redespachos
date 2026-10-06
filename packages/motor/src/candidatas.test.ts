@@ -345,4 +345,77 @@ describe('Paso 2: seleccionarCandidatas', () => {
       /Proveedor PROV1 tiene más de un tarifario vigente/,
     );
   });
+
+  it('Dos proveedores con el mismo variante_id dan dos candidatas', () => {
+    const ctx = {
+      ...baseContext,
+      proveedores: [
+        createProveedor({ id_proveedor: 'PROV1' }),
+        createProveedor({ id_proveedor: 'PROV2', cuit: '30700000008' }),
+      ],
+      tarifarios: [
+        createTarifario({ id: 'TAR1', id_proveedor: 'PROV1' }),
+        createTarifario({ id: 'TAR2', id_proveedor: 'PROV2' }),
+      ],
+      reglas: [
+        createRegla({ id_proveedor: 'PROV1', tarifario_id: 'TAR1', kg_max: '10' }),
+        createRegla({ id_proveedor: 'PROV2', tarifario_id: 'TAR2', kg_max: '20' }),
+      ],
+    };
+    const res = seleccionarCandidatas(getMotorInput(baseOrder), ctx);
+    expect(res.candidatas).toHaveLength(2);
+    expect(res.candidatas[0].id_proveedor).toBe('PROV1');
+    expect(res.candidatas[0].reglas_peso).toHaveLength(1);
+    expect(res.candidatas[1].id_proveedor).toBe('PROV2');
+    expect(res.candidatas[1].reglas_peso).toHaveLength(1);
+  });
+
+  it('Una regla "* / ROSARIO" no se toma como *', () => {
+    const ctx = {
+      ...baseContext,
+      reglas: [createRegla({ provincia_origen: '*', localidad_origen: 'ROSARIO' })],
+    };
+    // El pedido base tiene origen BUENOS AIRES (por canalizador CP 1000)
+    // Entonces esta regla no debería matchear ni como * ni como localidad
+    const res = seleccionarCandidatas(getMotorInput(baseOrder), ctx);
+    expect(res.candidatas[0].reglas_peso).toHaveLength(0);
+  });
+
+  it('origen_estricto=false: reglas solo de BUENOS AIRES para origen SANTA FE', () => {
+    // Pedido origen CP 2000 -> SANTA FE / ROSARIO
+    const pedido = getMotorInput({ ...baseOrder, codigo_postal_origen: '2000' });
+    const ctx = {
+      ...baseContext,
+      origen_estricto: false,
+      reglas: [createRegla({ provincia_origen: 'BUENOS AIRES', localidad_origen: undefined })],
+    };
+    const res = seleccionarCandidatas(pedido, ctx);
+    // Debe tomar las reglas de BUENOS AIRES
+    expect(res.candidatas[0].reglas_peso).toHaveLength(1);
+    expect(res.candidatas[0].reglas_peso[0].provincia_origen).toBe('BUENOS AIRES');
+
+    const ctxEstricto = { ...ctx, origen_estricto: true };
+    const resEstricto = seleccionarCandidatas(pedido, ctxEstricto);
+    // Con true no hay reglas
+    expect(resEstricto.candidatas[0].reglas_peso).toHaveLength(0);
+  });
+
+  it('origen_estricto=false: reglas de dos provincias distintas de la del pedido -> ninguna', () => {
+    const pedido = getMotorInput({ ...baseOrder, codigo_postal_origen: '2000' }); // SANTA FE
+    const ctx = {
+      ...baseContext,
+      origen_estricto: false,
+      reglas: [
+        createRegla({
+          provincia_origen: 'BUENOS AIRES',
+          localidad_origen: undefined,
+          kg_max: '10',
+        }),
+        createRegla({ provincia_origen: 'CORDOBA', localidad_origen: undefined, kg_max: '20' }),
+      ],
+    };
+    const res = seleccionarCandidatas(pedido, ctx);
+    // No toma ninguna por ambigüedad
+    expect(res.candidatas[0].reglas_peso).toHaveLength(0);
+  });
 });
