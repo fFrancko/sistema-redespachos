@@ -6,7 +6,11 @@ export default defineConfig({
     environment: 'node',
     watch: false,
     passWithNoTests: true,
-    include: ['packages/*/src/**/*.test.ts', 'apps/*/src/**/*.test.{ts,tsx}'],
+    include: [
+      'packages/*/src/**/*.test.ts',
+      'packages/*/test/**/*.test.ts',
+      'apps/*/src/**/*.test.{ts,tsx}',
+    ],
     pool: 'forks',
     poolOptions: {
       forks: {
@@ -19,9 +23,11 @@ export default defineConfig({
       reportsDirectory: 'coverage',
       include: ['packages/*/src/**/*.ts', 'apps/*/src/**/*.{ts,tsx}'],
       exclude: ['**/*.test.*', '**/*.d.ts'],
-      // Umbrales sin activar hasta MVP-14 (ver docs/CI.md). Forma válida en Vitest 2.x:
-      // thresholds: { lines: 80, functions: 80, branches: 80, statements: 80,
-      //   'packages/motor/src/**': { lines: 90, functions: 90, branches: 90, statements: 90 } }
+      // MVP-14: activo solo el umbral de motor. El global (80 %) sigue inactivo (ver docs/CI.md):
+      // lines: 80, functions: 80, branches: 80, statements: 80
+      thresholds: {
+        'packages/motor/src/**': { lines: 90, functions: 90, branches: 90, statements: 90 },
+      },
     },
   },
 });
