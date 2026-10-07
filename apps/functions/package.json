@@ -2,9 +2,15 @@
   "name": "@sistema-redespachos/functions",
   "version": "0.0.1",
   "type": "module",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
   "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "deploy:prepare": "node scripts/prepareDeploy.mjs",
+    "dev": "tsc -p tsconfig.build.json && node scripts/prepareDeploy.mjs && tsc -p tsconfig.build.json --watch --preserveWatchOutput --outDir dist/lib"
   },
   "dependencies": {
     "@sistema-redespachos/shared": "workspace:*",

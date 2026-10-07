@@ -20,6 +20,42 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # MVP-31 (P-05): el deploy se activa con la variable de repositorio DEPLOY_ENABLED.
+      # Activado y sin secrets, el job falla; desactivado, el resumen del run lo dice.
+      - name: Check deploy config
+        id: deploy_config
+        env:
+          DEPLOY_ENABLED: ${{ vars.DEPLOY_ENABLED }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+        run: |
+          if [ "$DEPLOY_ENABLED" != "true" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Deploy a dev desactivado"
+              echo ""
+              echo "La variable de repositorio \`DEPLOY_ENABLED\` vale \`${DEPLOY_ENABLED:-(sin definir)}\`, no \`true\`."
+              echo "Este run valida lint, typecheck, test y build, pero **no despliega** a \`qx-redespachos-dev\`:"
+              echo "los pasos de autenticación y deploy figuran como omitidos. Ver \`docs/CI.md\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=Deploy desactivado::DEPLOY_ENABLED no es 'true'; no se despliega a qx-redespachos-dev."
+            exit 0
+          fi
+          missing=""
+          if [ -z "$GCP_WORKLOAD_IDENTITY_PROVIDER" ]; then missing="$missing GCP_WORKLOAD_IDENTITY_PROVIDER"; fi
+          if [ -z "$GCP_SERVICE_ACCOUNT_EMAIL" ]; then missing="$missing GCP_SERVICE_ACCOUNT_EMAIL"; fi
+          if [ -n "$missing" ]; then
+            {
+              echo "## Deploy a dev fallido: faltan secrets"
+              echo ""
+              echo "\`DEPLOY_ENABLED\` vale \`true\` pero faltan los secrets:${missing}."
+              echo "Cargalos en Settings > Secrets and variables > Actions, o desactivá \`DEPLOY_ENABLED\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=Faltan secrets de deploy::DEPLOY_ENABLED es 'true' pero faltan:${missing}. Cargalos o desactivá DEPLOY_ENABLED."
+            exit 1
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
@@ -51,26 +87,15 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Check deploy secrets
-        id: secrets
-        env:
-          WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          SA_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
-        run: |
-          if [ -n "$WIF_PROVIDER" ] && [ -n "$SA_EMAIL" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=Deploy omitido::Faltan GCP_WORKLOAD_IDENTITY_PROVIDER o GCP_SERVICE_ACCOUNT_EMAIL. Ver docs/CI.md."
-          fi
-
       - name: Authenticate to Google Cloud
-        if: steps.secrets.outputs.ready == 'true'
+        if: steps.deploy_config.outputs.enabled == 'true'
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
 
-      - name: Deploy Hosting and Functions
-        if: steps.secrets.outputs.ready == 'true'
-        run: pnpm exec firebase deploy --project qx-redespachos-dev --only hosting,functions --non-interactive
+      # Solo Functions (P-3): el target de Hosting `web` todavía no está mapeado en .firebaserc.
+      # El predeploy de firebase.json construye shared y functions y arma apps/functions/dist.
+      - name: Deploy Functions
+        if: steps.deploy_config.outputs.enabled == 'true'
+        run: pnpm exec firebase deploy --project qx-redespachos-dev --only functions --non-interactive
