@@ -1,0 +1,90 @@
+{
+  "id": "cobertura-qx-sin-expresos",
+  "descripcion": "cobertura_qx = SI sin candidatas: COBERTURA_QX igual, sin cotización.",
+  "entrada": {
+    "pedido": {
+      "cp_destino_norm": "9901",
+      "localidad_destino_norm": "PUEBLO DESTINO",
+      "provincia_destino_norm": "SANTA FE",
+      "codigo_postal_origen": "9900",
+      "peso_kgs": "30",
+      "volumen_m3": "0.2"
+    },
+    "contexto": {
+      "canalizador": [
+        {
+          "cp": "9900",
+          "localidad": "VILLA ORIGEN",
+          "provincia": "BUENOS AIRES",
+          "partido": "PARTIDO SINTETICO",
+          "zona": "ZONA SINTETICA",
+          "cabecera": "CABECERA SINTETICA",
+          "subzona": "SIN COBERTURA",
+          "zona_tarifario": "ZT SINTETICA",
+          "cobertura_qx": false,
+          "version": 1
+        },
+        {
+          "cp": "9901",
+          "localidad": "PUEBLO DESTINO",
+          "provincia": "SANTA FE",
+          "partido": "PARTIDO SINTETICO",
+          "zona": "ZONA SINTETICA",
+          "cabecera": "CABECERA SINTETICA",
+          "subzona": "SUBZONA QX",
+          "zona_tarifario": "ZT SINTETICA",
+          "cobertura_qx": true,
+          "version": 1
+        }
+      ],
+      "proveedores": [
+        {
+          "id_proveedor": "EXPA",
+          "razon_social": "Expreso Sintético EXPA",
+          "cuit": "20001555554",
+          "email_contacto": ["expa@example.com"],
+          "telefono": "0000-0000",
+          "estado": "ACTIVO",
+          "condicion_pago": "30 días",
+          "iva_porcentaje": "0",
+          "aplica_seguro": false,
+          "creado_por": "U_SINTETICO",
+          "creado_en": "2026-01-01T00:00:00.000Z",
+          "actualizado_por": "U_SINTETICO",
+          "actualizado_en": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "tarifarios": [
+        {
+          "id": "TAR_EXPA",
+          "id_proveedor": "EXPA",
+          "version": 1,
+          "vigencia_desde": "2026-01-01",
+          "vigencia_hasta": null,
+          "estado": "VIGENTE",
+          "creado_por": "U_SINTETICO",
+          "creado_en": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "reglas": [],
+      "fecha_referencia": "2026-10-06",
+      "origen_estricto": true
+    }
+  },
+  "salida": {
+    "canalizador": {
+      "zona": "ZONA SINTETICA",
+      "cabecera": "CABECERA SINTETICA",
+      "subzona": "SUBZONA QX",
+      "zona_tarifario": "ZT SINTETICA",
+      "cobertura_qx": "SI"
+    },
+    "provincia_origen": "BUENOS AIRES",
+    "localidad_origen": "VILLA ORIGEN",
+    "observaciones": [],
+    "estado_sugerido": "COBERTURA_QX",
+    "cotizacion": null,
+    "alternativas": [],
+    "descartes": []
+  }
+}

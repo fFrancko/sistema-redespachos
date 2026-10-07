@@ -1,0 +1,235 @@
+{
+  "id": "referencia-1",
+  "descripcion": "Caso de referencia 1 de §3.3: IVA 21 %, seguro 0,5 %, gana VOLUMEN con colecta; total $4.139,20.",
+  "entrada": {
+    "pedido": {
+      "cp_destino_norm": "9901",
+      "localidad_destino_norm": "PUEBLO DESTINO",
+      "provincia_destino_norm": "SANTA FE",
+      "codigo_postal_origen": "9900",
+      "peso_kgs": "30",
+      "volumen_m3": "0.2",
+      "valor_declarado": 10000000
+    },
+    "contexto": {
+      "canalizador": [
+        {
+          "cp": "9900",
+          "localidad": "VILLA ORIGEN",
+          "provincia": "BUENOS AIRES",
+          "partido": "PARTIDO SINTETICO",
+          "zona": "ZONA SINTETICA",
+          "cabecera": "CABECERA SINTETICA",
+          "subzona": "SIN COBERTURA",
+          "zona_tarifario": "ZT SINTETICA",
+          "cobertura_qx": false,
+          "version": 1
+        },
+        {
+          "cp": "9901",
+          "localidad": "PUEBLO DESTINO",
+          "provincia": "SANTA FE",
+          "partido": "PARTIDO SINTETICO",
+          "zona": "ZONA SINTETICA",
+          "cabecera": "CABECERA SINTETICA",
+          "subzona": "SIN COBERTURA",
+          "zona_tarifario": "ZT SINTETICA",
+          "cobertura_qx": false,
+          "version": 1
+        }
+      ],
+      "proveedores": [
+        {
+          "id_proveedor": "EXPA",
+          "razon_social": "Expreso Sintético EXPA",
+          "cuit": "20001555554",
+          "email_contacto": ["expa@example.com"],
+          "telefono": "0000-0000",
+          "estado": "ACTIVO",
+          "condicion_pago": "30 días",
+          "iva_porcentaje": "21",
+          "aplica_seguro": true,
+          "porcentaje_seguro": "0.5",
+          "creado_por": "U_SINTETICO",
+          "creado_en": "2026-01-01T00:00:00.000Z",
+          "actualizado_por": "U_SINTETICO",
+          "actualizado_en": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "tarifarios": [
+        {
+          "id": "TAR_EXPA",
+          "id_proveedor": "EXPA",
+          "version": 1,
+          "vigencia_desde": "2026-01-01",
+          "vigencia_hasta": null,
+          "estado": "VIGENTE",
+          "creado_por": "U_SINTETICO",
+          "creado_en": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "reglas": [
+        {
+          "id": "P1",
+          "tarifario_id": "TAR_EXPA",
+          "id_proveedor": "EXPA",
+          "tipo_regla": "PESO",
+          "provincia_origen": "*",
+          "provincia_destino": "SANTA FE",
+          "localidad_destino": "PUEBLO DESTINO",
+          "codigo_postal_destino": "9901",
+          "zona_destino": "Z1",
+          "variante_id": "9901|PUEBLO DESTINO|Z1",
+          "kg_min": "0",
+          "kg_max": "10",
+          "m3_min": null,
+          "m3_max": null,
+          "precio_tramo": "900",
+          "costo_base_viaje": "0",
+          "aplica_colecta": false,
+          "vigencia_desde": "2026-01-01",
+          "vigencia_hasta": null,
+          "estado": "VIGENTE",
+          "creado_por": "U_SINTETICO",
+          "creado_en": "2026-01-01T00:00:00.000Z",
+          "actualizado_por": "U_SINTETICO",
+          "actualizado_en": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "P2",
+          "tarifario_id": "TAR_EXPA",
+          "id_proveedor": "EXPA",
+          "tipo_regla": "PESO",
+          "provincia_origen": "*",
+          "provincia_destino": "SANTA FE",
+          "localidad_destino": "PUEBLO DESTINO",
+          "codigo_postal_destino": "9901",
+          "zona_destino": "Z1",
+          "variante_id": "9901|PUEBLO DESTINO|Z1",
+          "kg_min": "10",
+          "kg_max": "50",
+          "m3_min": null,
+          "m3_max": null,
+          "precio_tramo": "1600",
+          "costo_base_viaje": "0",
+          "aplica_colecta": false,
+          "vigencia_desde": "2026-01-01",
+          "vigencia_hasta": null,
+          "estado": "VIGENTE",
+          "creado_por": "U_SINTETICO",
+          "creado_en": "2026-01-01T00:00:00.000Z",
+          "actualizado_por": "U_SINTETICO",
+          "actualizado_en": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "V1",
+          "tarifario_id": "TAR_EXPA",
+          "id_proveedor": "EXPA",
+          "tipo_regla": "VOLUMEN",
+          "provincia_origen": "*",
+          "provincia_destino": "SANTA FE",
+          "localidad_destino": "PUEBLO DESTINO",
+          "codigo_postal_destino": "9901",
+          "zona_destino": "Z1",
+          "variante_id": "9901|PUEBLO DESTINO|Z1",
+          "kg_min": null,
+          "kg_max": null,
+          "m3_min": "0",
+          "m3_max": "0.05",
+          "precio_tramo": "1000",
+          "costo_base_viaje": "0",
+          "aplica_colecta": false,
+          "vigencia_desde": "2026-01-01",
+          "vigencia_hasta": null,
+          "estado": "VIGENTE",
+          "creado_por": "U_SINTETICO",
+          "creado_en": "2026-01-01T00:00:00.000Z",
+          "actualizado_por": "U_SINTETICO",
+          "actualizado_en": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "V2",
+          "tarifario_id": "TAR_EXPA",
+          "id_proveedor": "EXPA",
+          "tipo_regla": "VOLUMEN",
+          "provincia_origen": "*",
+          "provincia_destino": "SANTA FE",
+          "localidad_destino": "PUEBLO DESTINO",
+          "codigo_postal_destino": "9901",
+          "zona_destino": "Z1",
+          "variante_id": "9901|PUEBLO DESTINO|Z1",
+          "kg_min": null,
+          "kg_max": null,
+          "m3_min": "0.05",
+          "m3_max": "0.5",
+          "precio_tramo": "2600",
+          "costo_base_viaje": "0",
+          "aplica_colecta": true,
+          "costo_colecta": "320.83",
+          "vigencia_desde": "2026-01-01",
+          "vigencia_hasta": null,
+          "estado": "VIGENTE",
+          "creado_por": "U_SINTETICO",
+          "creado_en": "2026-01-01T00:00:00.000Z",
+          "actualizado_por": "U_SINTETICO",
+          "actualizado_en": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "fecha_referencia": "2026-10-06",
+      "origen_estricto": true
+    }
+  },
+  "salida": {
+    "canalizador": {
+      "zona": "ZONA SINTETICA",
+      "cabecera": "CABECERA SINTETICA",
+      "subzona": "SIN COBERTURA",
+      "zona_tarifario": "ZT SINTETICA",
+      "cobertura_qx": "NO"
+    },
+    "provincia_origen": "BUENOS AIRES",
+    "localidad_origen": "VILLA ORIGEN",
+    "observaciones": [],
+    "estado_sugerido": "VALORIZADO",
+    "cotizacion": {
+      "id_proveedor": "EXPA",
+      "tarifario_id": "TAR_EXPA",
+      "variante_id": "9901|PUEBLO DESTINO|Z1",
+      "variante": {
+        "localidad": "PUEBLO DESTINO",
+        "zona": "Z1",
+        "plazo_estimado_dias": null
+      },
+      "regla_peso_id": "P2",
+      "regla_volumen_id": "V2",
+      "criterio": "VOLUMEN",
+      "detalle_tarifa": "VOLUMEN 0,05–0,5 m3: tramo $2.600,00",
+      "costo_peso": 160000,
+      "costo_volumen": 260000,
+      "flete": 260000,
+      "colecta": 32083,
+      "seguro": 50000,
+      "neto": 342083,
+      "iva_porcentaje": "21",
+      "iva": 71837,
+      "total": 413920,
+      "fecha_referencia": "2026-10-06",
+      "motor_version": "1.0.0"
+    },
+    "alternativas": [
+      {
+        "id_proveedor": "EXPA",
+        "variante_id": "9901|PUEBLO DESTINO|Z1",
+        "variante": {
+          "localidad": "PUEBLO DESTINO",
+          "zona": "Z1",
+          "plazo_estimado_dias": null
+        },
+        "criterio": "VOLUMEN",
+        "neto": 342083,
+        "total": 413920
+      }
+    ],
+    "descartes": []
+  }
+}
