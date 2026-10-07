@@ -61,10 +61,84 @@ Ejecuta Claude Code (Opus 5.5) en lugar de Gemini, por decisión de Franco. Rama
    - **(b)** Casos reales **anonimizados** en el repo (sin nombres, CUIT ni destinatarios, y con los precios multiplicados por un factor secreto). Mantiene la regresión en CI, pero los precios siguen siendo derivables.
 
    Recomendación de Claude: **(a)**. Requiere además la planilla de liquidación manual (§7 punto 3), que hoy no existe.
-2. **`MOTOR_VERSION` en la salida.** `cotizacion.motor_version` es parte de la salida comparada: subir la versión rompe todos los casos con cotización y obliga a correr `golden:update` caso por caso. Recomendación: dejarlo así en este ticket (es lo que pide "reescribe solo ese caso"); si molesta, un ticket aparte agrega `--caso` repetible.
-3. **Generador del set inicial.** Queda en el repo (regla 8: fixtures generados con scripts propios), pero solo da de alta casos nuevos; nunca reescribe uno existente. Las actualizaciones pasan solo por `golden:update`.
+2. **`MOTOR_VERSION` en la salida.** `cotizacion.motor_version` es parte de la salida comparada: subir la versión rompe todos los casos con cotización y obliga a correr `golden:update` caso por caso. Recomendación: dejarlo así en este ticket (es lo que pide "reescribe solo ese caso"); si molesta, un ticket aparte agrega `--caso` repetible. **Revisión del plan (07/10): de acuerdo.**
+3. **Generador del set inicial.** Queda en el repo (regla 8: fixtures generados con scripts propios), pero solo da de alta casos nuevos; nunca reescribe uno existente. Las actualizaciones pasan solo por `golden:update`. **Revisión del plan (07/10): de acuerdo.**
 
 ---
 
 ## Nota de entrega
-Usar la plantilla de `tickets/_TEMPLATE.md`.
+
+- **Qué se hizo:** formato de caso dorado (un JSON por caso con `id`, `descripcion`, `entrada` completa y `salida` completa de `cotizar`, montos en `cents`), runner `golden.test.ts`, script `golden:update` con `CHANGELOG.md` y huella sha256 por caso, y un set inicial de **45 casos sintéticos**: los 2 de referencia de §3.3 y 43 de bordes. El runner hace cuatro cosas: valida la entrada con los esquemas de `shared`, compara la salida campo por campo (`salida.cotizacion.iva: esperado 2153, obtenido 2152`), exige que los casos sean exactamente los del `CHANGELOG` y que la huella de cada uno sea la de su última línea. Por eso también falla un JSON editado a mano o un caso borrado.
+- **Commit:** `bf2f1ce` (implementación) en la rama `mvp-15-casos-dorados`, más el commit de esta nota. Sin push ni PR. Desarrollado en un worktree propio (`../sistema-redespachos-mvp15`).
+- **Archivos tocados:** `packages/motor/package.json` (solo el script `golden:update`), `packages/motor/scripts/golden-{lib,update,generar}.js`, `packages/motor/test/golden/{golden.test.ts,CHANGELOG.md}`, `packages/motor/test/golden/casos/*.json` (45), se borró `packages/motor/test/golden/.gitkeep`, y este ticket. `git diff --stat origin/main...HEAD` (antes del commit de la nota): `53 files changed, 10607 insertions(+), 2 deletions(-)`, todos dentro de los permitidos.
+- **Cómo probarlo:**
+
+  ```bash
+  pnpm --filter @sistema-redespachos/shared build
+  pnpm exec vitest run packages/motor/test/golden
+  pnpm --filter @sistema-redespachos/motor golden:update -- --caso redondeo-iva-half-up --motivo "<texto>"
+  pnpm --filter @sistema-redespachos/motor build && node packages/motor/scripts/golden-generar.js
+  ```
+
+  El último comando vuelve a controlar los 45 casos contra los valores a mano y no escribe nada si ya existen.
+
+- **Resultado de la verificación** (`rm -rf packages/*/dist apps/functions/lib apps/web/dist`, después `pnpm install --frozen-lockfile && pnpm format && pnpm ci:run`, exit 0; extracto real):
+
+  ```text
+  > pnpm --filter @sistema-redespachos/shared build && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
+  > @sistema-redespachos/shared@0.0.1 build > tsc
+  > eslint apps/web/src apps/functions packages --max-warnings 0
+  > prettier --check .
+  All matched files use Prettier code style!
+   ✓ packages/motor/test/golden/golden.test.ts (183 tests) 42ms
+   ✓ packages/motor/test/guardas.test.ts (8 tests) 54ms
+   Test Files  29 passed (29)
+        Tests  766 passed (766)
+  packages/shared build: Done
+  packages/motor build: Done
+  apps/functions build: Done
+  apps/web build: ✓ built in 820ms
+  ```
+
+  ESLint sí revisa los scripts: `eslint packages/motor/scripts --format json` lista los 3 `.js` con `errores=0`.
+
+- **Consumo real:** los scripts corren con Node sobre `packages/motor/dist`. `golden:update` compila con `tsc -p tsconfig.build.json` antes de correr. Se probó con el comando literal del ticket. **pnpm 9 sí pasa el `--` tal cual** (`node scripts/golden-update.js "--" "--caso" ...`) y el script lo descarta antes de `parseArgs`.
+- **Evidencia del criterio de aceptación:**
+  - **§4 / agregado 1 (prueba de la falla).** Se cambió el IVA de `calculo.ts` a `ROUND_HALF_EVEN` en el worktree, sin commitear, y después se revirtió con `git checkout`:
+
+    ```text
+    × caso dorado 'redondeo-iva-half-up-centavo-cero.json' > cotizar devuelve exactamente la salida esperada
+    × caso dorado 'redondeo-iva-half-up.json' > cotizar devuelve exactamente la salida esperada
+    AssertionError: redondeo-iva-half-up: la salida del motor cambió. Si es intencional: pnpm --filter @sistema-redespachos/motor golden:update -- --caso redondeo-iva-half-up --motivo "<texto>": expected [ …(3) ] to deeply equal []
+    +   "salida.cotizacion.iva: esperado 2153, obtenido 2152",
+    +   "salida.cotizacion.total: esperado 12403, obtenido 12402",
+    +   "salida.alternativas[0].total: esperado 12403, obtenido 12402",
+    (redondeo-iva-half-up-centavo-cero: iva esperado 11, obtenido 10)
+          Tests  2 failed | 181 passed (183)
+    ```
+
+    Lo mismo con el seguro en half-even: falla `redondeo-seguro-half-up` (`seguro: esperado 13, obtenido 12`), `Tests 1 failed | 182 passed`.
+
+  - **Actualización explícita de punta a punta.** Con el IVA en half-even se corrió `golden:update -- --caso redondeo-iva-half-up --motivo "prueba..."`. El script mostró los 3 campos que cambiaban, reescribió solo ese JSON y agregó una línea al `CHANGELOG`. Después de eso, ese caso pasa, el otro sigue fallando (`Tests 1 failed | 182 passed`) y `prettier --check` sigue verde. Se revirtió todo con `git checkout`.
+  - **Agregado 2.** Sin `--motivo` → `golden: falta --motivo "<texto>": toda actualización lleva motivo`, exit 1. Con `--motivo "  "` da el mismo error. Con un caso inexistente → `golden: no existe el caso no-existe`, exit 1.
+  - **Edición a mano.** Cambiar `iva` 2153→2152 en el JSON falla dos tests: la huella (`redondeo-iva-half-up: editado sin golden:update`) y la salida.
+  - **Caso borrado.** Borrar `tramos-solapados.json` falla `los casos son exactamente los registrados en el CHANGELOG`.
+  - **Fin de línea.** Después del commit se borraron y se volvieron a sacar de git los casos y el `CHANGELOG`. Los JSON quedaron con CRLF (`autocrlf=true`) y pasan `183 passed`, igual que después de `pnpm format`.
+  - **Agregado 3.** CPs `9900`–`9909` (fuera del rango real), localidades y proveedores inventados (`EXPA`, `PUEBLO DESTINO`, …), precios inventados, CUIT sintético `20001555554` y emails `@example.com`.
+  - **Agregado 4:** ver la verificación de arriba.
+- **Decisiones tomadas:**
+  - **Huella en el `CHANGELOG`.** Se guarda el sha256 del JSON canónico del caso, con las claves ordenadas y sin formato. Así, el único camino para cambiar un caso sin romper CI es el script.
+  - **Valores calculados a mano.** **La `salida` completa la escribe el motor.** A mano se controlan solo algunos campos por caso (estado, observaciones, descartes y los montos o reglas clave de la cotización). Están en `aMano` en `golden-generar.js`, con el cálculo comentado en los casos de referencia. El generador no escribe nada si alguno no coincide; se probó cambiando un valor a mano: `referencia-1 → cotizacion.iva: a mano 71838, motor 71837`, exit 1. Caso de referencia 2: total a mano $530.000,00.
+  - **Valores de la salida que se comparan.** La salida se compara como JSON, así que los campos `undefined` (por ejemplo, `provincia_origen` cuando el CP de origen no está en el canalizador) no figuran.
+  - **Prettier desde los scripts.** Se corre con `pnpm exec prettier --write`, en un solo string con `shell` (en Windows `pnpm` es un `.cmd`). Las rutas salen de ids validados con `^[a-z0-9]+(-[a-z0-9]+)*$`.
+  - **Huella en dos lugares.** `canonical` está escrito dos veces: en `golden-lib.js` (JS, para Node) y en `golden.test.ts` (TS). Si divergen, el runner falla con todos los casos.
+- **Supuestos:**
+  - La fecha del `CHANGELOG` es la fecha local de la máquina que corre el script.
+  - Los casos de `vigencia-*` usan dos tarifarios del mismo proveedor con rangos que no se pisan. El caso con dos vigentes a la vez (el motor lanza un error) no es un caso dorado, porque `cotizar` no devuelve salida; queda cubierto por los tests de MVP-13.
+- **Fuera de alcance:**
+  - Casos reales (PREGUNTA 1, pendiente de Franco y de la planilla de liquidación manual de §7.3): sin ticket todavía.
+  - `--caso` repetible para subir `MOTOR_VERSION` (PREGUNTA 2): sin ticket.
+- **Riesgos y deuda:**
+  - **Sugerencia para el auditor:** recalcular a mano `referencia-1`, `excedente-volumen` (5.617,2839 → $5.617,28), `redondeo-componente-half-up`, `redondeo-seguro-half-up` y `empate-r7-gana-volumen-con-reglas`.
+  - El runner no impide que alguien recalcule la huella a mano y la escriba en el `CHANGELOG`. Eso igual queda visible en el diff como una línea nueva con motivo.
+  - `golden:update` reescribe la `salida` aunque no cambie nada (por ejemplo, para registrar una edición de `descripcion` o de `entrada`) y lo informa con "0 campos de la salida cambiaron".
