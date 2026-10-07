@@ -217,7 +217,9 @@ Aprobado por Franco el 7/10 con la opción 1 y estos ajustes, ya incorporados. W
      - `true` con un solo secret: exit 1, nombra solo el que falta.
      - `true` con los dos: exit 0, `enabled=true`.
 
-     Con `js-yaml` (ya instalado como dependencia de `firebase-tools`) confirmé que los dos workflows parsean. Auth y deploy tienen `if: steps.deploy_config.outputs.enabled == 'true'`. **Falta el run real en GitHub** con la variable creada: lo puede disparar Franco después del merge.
+     Con `js-yaml` (ya instalado como dependencia de `firebase-tools`) confirmé que los dos workflows parsean. Auth y deploy tienen `if: steps.deploy_config.outputs.enabled == 'true'`. **Verificado en GitHub** con el run de `Deploy to Dev` del merge de la PR #28 (`d943ef1`), [run 37673234187](https://github.com/fFrancko/sistema-redespachos/actions/runs/37673234187), consultado por la API de GitHub:
+     - **Intento 1, `DEPLOY_ENABLED = true` sin secrets:** job `failure`. Falla en `Check deploy config` (paso 3) y todos los pasos siguientes figuran `skipped`. Anotación: `Faltan secrets de deploy | DEPLOY_ENABLED es 'true' pero faltan: GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL. Cargalos o desactivá DEPLOY_ENABLED.` ✔
+     - **Intento 2 (re-run), `DEPLOY_ENABLED = false`:** job `success`. Install, Build shared, lint, typecheck, test y build en `success`; `Authenticate to Google Cloud` y `Deploy Functions` en `skipped`. Anotación: `Deploy desactivado | DEPLOY_ENABLED no es 'true'; no se despliega a qx-redespachos-dev.` El re-run toma el valor nuevo de la variable. El texto del resumen (`$GITHUB_STEP_SUMMARY`) no se lee por la API pública: lo escribe la misma rama del script que emite esa anotación, y se ve en la pestaña Summary del run. ✔
 
   4. **Secuencia de §5.5 en verde:** ver arriba. ✔
   5. **Opción de empaquetado:** ver Decisiones. ✔
@@ -247,7 +249,7 @@ Aprobado por Franco el 7/10 con la opción 1 y estos ajustes, ya incorporados. W
   - `src/firebase-init.ts` sigue sin importarse y viaja en `lib/`: sin ticket, lo toman MVP-06 o MVP-10 cuando usen Admin.
 
 - **Riesgos y deuda** (qué conviene que el auditor mire primero):
-  1. **El deploy real no se probó** (criterio 2) ni el run de GitHub con la variable (criterio 3, solo simulado).
+  1. **El deploy real no se probó** (criterio 2): faltan los secrets de Workload Identity Federation. El criterio 3 quedó verificado en GitHub (run 37673234187).
   2. **Orden de evaluación ESM:** cualquier carril que cree una función tiene que importarla a través del índice raíz, que ya importa `globalOptions.js` primero. Una función importada por otra vía antes de `globalOptions` quedaría sin región. `nodeRuntime.test.ts` lo cubre para `helloWorld`; conviene extenderlo a cada dominio cuando tenga funciones.
   3. **Transitivas sin lock en Cloud Build:** un deploy puede traer versiones distintas de las que se testearon en CI.
   4. **Flujo local:** el emulador lee `dist/`, no `src/`. Sin `pnpm --filter @sistema-redespachos/functions dev` corriendo, el emulador sirve código viejo o no arranca. En Windows, detener el proceso padre puede dejar vivos el `tsc --watch` y el emulador (me pasó con mis propios procesos y los cerré a mano).
