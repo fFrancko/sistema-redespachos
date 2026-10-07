@@ -26,7 +26,8 @@ Si dos fuentes se contradicen, **no decidas**: seguí la de menor número, dejá
 - Solo editás archivos de tu carril y los que tu ticket permite explícitamente.
 - Para tocar lo **compartido** abrí un cambio separado, con título `CR: <cambio>`, y detenete: lo aprueba Franco. El otro agente hace rebase.
 - Dependencias nuevas: `CR: deps` aparte. Nunca edites `pnpm-lock.yaml` a mano. **Nunca mergees ni apruebes PRs de Dependabot.**
-- **Índices compartidos (estado al cierre de la Ola 0):** hoy `apps/functions/src/index.ts` es un índice único y no existe `apps/web/src/app`. Decidido: MVP-31 deja el índice raíz con una línea fija por dominio de §3.8 y MVP-05 crea el shell web con la lista fija de features. Hasta entonces, tocar ese índice o crear el shell es un `CR`; después, cada carril edita solo los índices de sus dominios y features. No lo hagas "de paso".
+- **Índices compartidos (estado al cierre de la Ola 0):** hoy `apps/functions/src/index.ts` es un índice único y no existe `apps/web/src/app`.
+- **Índices de Functions (desde MVP-31):** `apps/functions/src/index.ts` tiene una línea fija por dominio de §3.8 y no se edita más. Cada dominio tiene su `apps/functions/src/<dominio>/index.ts`, que es del carril dueño del dominio (A: `postalRouter`, `tariffs`, `orders`; B: el resto) y reexporta lo de `callables/<dominio>`, `triggers/<dominio>` y `workers/<dominio>`. Las funciones se despliegan como `<dominio>-<función>` (p. ej. `orders-importBatch`).
 
 ## 4. Reglas inquebrantables
 1. **Dinero:** tarifas como decimal en string (hasta 4 decimales, `dec`); resultados en centavos enteros (`cents`). Cálculos con `decimal.js` y los helpers de `shared` (`decToDecimal`, `decimalToCents`, `decimalToDec`). Nunca `number` para montos.

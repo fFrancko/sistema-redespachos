@@ -55,18 +55,49 @@ Nota: `thresholds: { global: {...} }` (estilo Jest) **no se aplica** en Vitest 2
 
 ## Deploy a dev (`.github/workflows/deploy.yml`)
 
-Se dispara solo en `push` a `main`; nunca en PR. Pasos: install → lint → typecheck → test (emuladores) → build → autenticación a Google Cloud (Workload Identity Federation) → `firebase deploy --project qx-redespachos-dev --only hosting,functions`.
+Se dispara solo en `push` a `main`; nunca en PR. Pasos: Check deploy config → install → Build shared → lint → typecheck → test (emuladores) → build → autenticación a Google Cloud (Workload Identity Federation) → `firebase deploy --project qx-redespachos-dev --only functions`.
 
-No despliega reglas de Firestore ni Storage; esas se despliegan a mano (MVP-02 / MVP-09). El estado del deploy queda visible en el commit de `main` (check del workflow).
+Solo despliega Functions: Hosting vuelve cuando se mapee el target `web` en `.firebaserc`. No despliega reglas de Firestore ni Storage.
 
-### Pendiente para que el deploy funcione
+### Activación: variable `DEPLOY_ENABLED`
 
-1. **Secrets de GitHub sin cargar.** El deploy requiere:
-   - `GCP_WORKLOAD_IDENTITY_PROVIDER`: proveedor de Workload Identity Federation (`projects/<n>/locations/global/workloadIdentityPools/<pool>/providers/<provider>`).
-   - `GCP_SERVICE_ACCOUNT_EMAIL`: service account con permisos de deploy de Hosting y Functions en `qx-redespachos-dev`.
-   Mientras falten, el workflow corre lint, typecheck, test y build, **omite** autenticación y deploy, y deja un warning "Deploy omitido" en el run (queda en verde). Nunca van en el repo. **Un run verde de `Deploy to Dev` no significa que se haya desplegado:** hay que mirar si los pasos `Authenticate to Google Cloud` y `Deploy Hosting and Functions` figuran como `skipped`. MVP-31 cambia este comportamiento.
-3. **`apps/functions` no es desplegable todavía:** no emite build, no tiene `main` ni `engines`, depende de `shared` por `workspace:*` (npm no lo resuelve en el deploy) y su callable de ejemplo es de 1ª gen. Todo eso es MVP-31.
-2. **Target de Hosting sin mapear.** `firebase.json` declara `"target": "web"`, pero en `.firebaserc` `targets` está vacío. Hay que mapearlo (`firebase target:apply hosting web <site-id> --project qx-redespachos-dev`) en el ticket de Firebase. MVP-03 no puede tocar esos archivos.
+El paso `Check deploy config` corre primero y decide (MVP-31, decisión P-05):
+
+| `DEPLOY_ENABLED` (variable de repositorio) | Secrets      | Resultado                                                                                                                                                                                  |
+| ------------------------------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Ausente o distinto de `true`               | No importan  | Valida lint, typecheck, test y build; **no despliega**. El resumen del run (pestaña Summary) dice "Deploy a dev desactivado" y los pasos de autenticación y deploy figuran como `skipped`. |
+| `true`                                     | Falta alguno | El job **falla** en `Check deploy config` con `::error` y el nombre de cada secret faltante, también en el resumen.                                                                        |
+| `true`                                     | Los dos      | Autentica y despliega.                                                                                                                                                                     |
+
+Secrets (nunca van en el repo):
+
+- `GCP_WORKLOAD_IDENTITY_PROVIDER`: `projects/<n>/locations/global/workloadIdentityPools/<pool>/providers/<provider>`.
+- `GCP_SERVICE_ACCOUNT_EMAIL`: service account con permisos de deploy de Functions en `qx-redespachos-dev`.
+
+La variable se crea en Settings → Secrets and variables → Actions → Variables.
+
+### Empaquetado de `apps/functions`
+
+Cloud Build instala las dependencias con npm, que no entiende `workspace:*`. Por eso `firebase.json` usa `source: "apps/functions/dist"` y un `predeploy` que construye `shared` y `functions` y corre `deploy:prepare` (`apps/functions/scripts/prepareDeploy.mjs`). Ese script borra y rearma `apps/functions/dist/` con:
+
+- `lib/`: el JS compilado;
+- `vendor/`: `@sistema-redespachos/shared` empaquetado con `pnpm pack`;
+- `package.json` generado: `shared` como `file:vendor/<tgz>`, `firebase-admin` y `firebase-functions` fijados a la versión instalada (`pnpm list --prod --json`), y `zod` y `decimal.js` en `overrides`.
+
+Las dependencias transitivas más profundas no quedan fijadas: Cloud Build no recibe un lockfile.
+
+### Functions en local (emulador)
+
+El emulador lee `apps/functions/dist` y no corre el `predeploy`. Flujo:
+
+1. `pnpm --filter @sistema-redespachos/shared build` (una vez, y cada vez que cambie `shared`).
+2. `pnpm --filter @sistema-redespachos/functions dev`: compila, arma `dist/` y deja `tsc --watch` escribiendo en `dist/lib`.
+3. En otra terminal, `pnpm dev:emulator`: el emulador vigila `dist/` y recarga las funciones con cada cambio en `src`.
+
+En local, `dist/` no tiene `node_modules`: las dependencias se resuelven subiendo a `apps/functions/node_modules`.
+```
+
+Además, `docs/FIREBASE.md` (línea 49) dice que el deploy "hoy se omite por falta de secrets" y que `apps/functions` "todavía no es desplegable (MVP-31)"; con este ticket queda desactualizado.
 
 ## Dependabot
 

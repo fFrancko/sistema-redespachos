@@ -46,7 +46,7 @@ Las colecciones de la Fase 1 son las 19 de `docs/arquitectura-v3.md` §2.1. La l
 
 `.firebaserc` declara `dev` = **`qx-redespachos-dev`** (proyecto real "Sistema Expresos", creado el 5/10/2026) y `prod` = `proyecto-qx-prod`, que **todavía es un nombre provisorio**: el proyecto de prod se crea en el Hito 1B.
 
-- El deploy de Hosting y Functions a dev lo hace `deploy.yml` (ver `docs/CI.md`). Hoy se omite por falta de secrets, y `apps/functions` todavía no es desplegable (MVP-31).
+- El deploy de Functions a dev lo hace `deploy.yml` (ver `docs/CI.md`), solo si la variable de repositorio `DEPLOY_ENABLED` vale `true`; Hosting todavía no se despliega (falta mapear el target `web`). Para correr Functions en el emulador, ver "Functions en local" en `docs/CI.md`.
 - **No despliegues reglas de Firestore ni de Storage a ningún proyecto real, ni a mano.** Las reglas actuales son provisorias (ver abajo). Las reglas por rol y sucursal llegan con MVP-07, con tests en el emulador.
 - Deploy a prod: no existe todavía; va por tag y en un ticket propio.
 
