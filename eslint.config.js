@@ -5,7 +5,7 @@ import globals from 'globals';
 
 export default [
   {
-    ignores: ['node_modules/**', 'dist/**', 'lib/**', '.turbo/**', '**/pnpm-lock.yaml', '**/package-lock.json'],
+    ignores: ['node_modules/**', 'dist/**', 'lib/**', '**/dist/**', 'apps/functions/lib/**', '.turbo/**', '**/pnpm-lock.yaml', '**/package-lock.json'],
   },
   {
     files: ['**/*.{js,jsx}'],

@@ -5,9 +5,14 @@
   },
   "functions": [
     {
-      "source": "apps/functions",
+      "source": "apps/functions/dist",
       "codebase": "default",
-      "ignore": ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"]
+      "ignore": ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"],
+      "predeploy": [
+        "pnpm --filter @sistema-redespachos/shared build",
+        "pnpm --filter @sistema-redespachos/functions build",
+        "pnpm --filter @sistema-redespachos/functions deploy:prepare"
+      ]
     }
   ],
   "emulators": {
