@@ -126,3 +126,128 @@ Aprobado por Franco el 7/10 con la opción 1 y estos ajustes, ya incorporados. W
   > `eslint.config.js` ignora `lib/**` y `dist/**` solo en la raíz, pero `pnpm lint` recorre `apps/functions` y `packages`. Después de un build local, lintea `apps/functions/lib`, `apps/functions/dist` y `packages/*/dist`. En CI no se nota porque lint corre antes de build, pero un `pnpm ci:run` repetido en local puede dar rojo por código generado. Evidencia en MVP-31: mientras `functions` emitía `.d.ts`, `pnpm lint` falló por `no-explicit-any` en `apps/functions/lib/callables/helloWorld.d.ts`. MVP-31 lo esquiva sin emitir `.d.ts` en `functions`, pero la regla sigue frágil. Cambio: agregar `'**/lib/**'` y `'**/dist/**'` a `ignores`. Ojo: `apps/functions/src/lib/` es código fuente compartido y quedaría ignorado con `'**/lib/**'`, así que conviene `'apps/functions/lib/**'` más `'**/dist/**'`, o excluir `src/lib` explícitamente.
 
 - **Desvío respecto del ajuste 5 de Franco (para confirmar):** pidió `setGlobalOptions` "en `src/index.ts`". En ESM los imports de un módulo se evalúan antes que su cuerpo, y `onCall` de `firebase-functions` 5.1.1 copia las opciones globales al definirse la función. Con la llamada en el cuerpo de `index.ts`, el JS emitido cargado con Node deja `helloWorld` **sin región** (`region: undefined`, verificado). Por eso la llamada vive en `src/globalOptions.ts` y `index.ts` la importa en su primera línea. Si preferís otra forma, avisame.
+
+---
+
+## Nota de entrega
+
+- **Qué se hizo:** `apps/functions` emite JS ESM con `NodeNext` a `lib/`. El deploy se arma con `predeploy` en `apps/functions/dist/`, con `shared` empaquetado. `helloWorld` es una callable de 2ª gen en `southamerica-east1` que usa `shared`. El índice raíz tiene una línea por dominio de §3.8 hacia 12 índices vacíos. `deploy.yml` decide con `DEPLOY_ENABLED`: si está activado y faltan secrets, falla; si está desactivado, lo dice en el resumen. Despliega solo Functions.
+- **Commit:** `29a2757` en `mvp-31-deploy-functions` (código y plan); esta nota va en el commit siguiente. Sin push ni PR.
+- **Archivos tocados** (`git diff --stat origin/main...HEAD` al commit `29a2757`):
+
+  ```
+   .github/workflows/deploy.yml               | 59 +++++++++++++-----
+   apps/functions/package.json                | 10 ++-
+   apps/functions/scripts/prepareDeploy.mjs   | 99 ++++++++++++++++++++++++++++++
+   apps/functions/src/{admin,auth,emailTemplates,emails,orders,postalRouter,
+     proformas,purchaseOrders,reports,settlement,suppliers,tariffs}/index.ts  | 3 + c/u
+   apps/functions/src/callables/helloWorld.ts |  9 +++
+   apps/functions/src/globalOptions.ts        |  7 +++
+   apps/functions/src/index.test.ts           | 49 +++++++++++++++
+   apps/functions/src/index.ts                | 20 ++++--
+   apps/functions/src/nodeRuntime.test.ts     | 56 +++++++++++++++++
+   apps/functions/tsconfig.build.json         |  8 +++
+   apps/functions/tsconfig.json               | 10 +--
+   firebase.json                              |  9 ++-
+   tickets/MVP-31.md                          | 72 +++++++++++++++++++++-
+   24 files changed, 413 insertions(+), 31 deletions(-)
+  ```
+
+  Sin cambios en `packages/*`, `pnpm-lock.yaml`, `docs/`, `AGENTS.md`, `.gitignore` ni `eslint.config.js`.
+
+- **Cómo probarlo:**
+
+  ```bash
+  pnpm install --frozen-lockfile && pnpm format && pnpm ci:run
+  node --input-type=module -e "import('./apps/functions/lib/index.js').then(m => console.log(m.helloWorld.__endpoint.platform, m.helloWorld.__endpoint.region))"
+  pnpm --filter @sistema-redespachos/functions build && pnpm --filter @sistema-redespachos/functions deploy:prepare
+  # emulador: terminal 1
+  pnpm --filter @sistema-redespachos/functions dev
+  # terminal 2
+  pnpm exec firebase emulators:start --only functions --project demo-qx-ci
+  curl -X POST -H "Content-Type: application/json" -d '{"data":{}}' http://127.0.0.1:5001/demo-qx-ci/southamerica-east1/helloWorld
+  # deploy real (pendiente de Franco, con credenciales)
+  pnpm exec firebase deploy --only functions --project qx-redespachos-dev
+  ```
+
+- **Resultado de la verificación** (`AGENTS.md` §5.5, desde estado limpio: se borraron `packages/*/dist`, `apps/*/dist`, `apps/functions/lib` y `coverage` antes de correr; exit 0; extracto de la salida real):
+
+  ```
+  Lockfile is up to date, resolution step is skipped
+  Already up to date
+  > prettier --write .            (todos "unchanged" salvo lo propio ya formateado)
+  > pnpm --filter @sistema-redespachos/shared build && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
+  > tsc                                          (shared)
+  > eslint apps/web/src apps/functions packages --max-warnings 0
+  > prettier --check .
+  All matched files use Prettier code style!
+  > pnpm -r typecheck
+  packages/shared typecheck: Done
+  apps/web typecheck: Done
+  packages/motor typecheck: Done
+  apps/functions typecheck: Done
+  > vitest run
+   ✓ apps/functions/src/nodeRuntime.test.ts (1 test) 4414ms
+   ✓ apps/functions/src/index.test.ts (3 tests) 2ms
+   Test Files  30 passed (30)
+        Tests  587 passed (587)
+  > pnpm -r build
+  packages/shared build: Done
+  packages/motor build: Done
+  apps/functions build: Done
+  apps/web build: Done
+  ```
+
+  No corrí los tests con los emuladores de Auth y Firestore (`emulators:exec --only auth,firestore`): en esta máquina no hay un Java utilizable (solo un JRE 6), y el emulador de Firestore lo necesita. Los tests de este ticket no usan Firestore; ese paso lo corre CI. Node local: 26.10.0 (CI usa 22.x). Por eso pnpm avisa `Unsupported engine` con `engines.node: "22"`; es solo un aviso.
+
+- **Consumo real:**
+  - **Node puro sobre el build (criterio 6):** `{"platform":"gcfv2","region":["southamerica-east1"],"callable":{},"exports":["admin","auth","emailTemplates","emails","helloWorld","orders","postalRouter","proformas","purchaseOrders","reports","settlement","suppliers","tariffs"]}`.
+  - **Simulación de Cloud Build:** copié `apps/functions/dist` fuera del repo (sin `node_modules` arriba). Ahí corrí `npm install` (npm 11.19.1) contra el registro y lo cargué con Node. Se instaló `firebase-functions 5.1.1`, `firebase-admin 12.7.0`, `@sistema-redespachos/shared 0.0.1` (desde el `.tgz`), `zod 3.25.76` y `decimal.js 10.6.0`. Resultado: `{"platform":"gcfv2","region":["southamerica-east1"],"callable":true,"exports":13}`, y `helloWorld.run` devolvió los 12 `estados_pedido` de `shared`.
+  - **Emulador de Functions (`--project demo-qx-ci`):** `Watching "...\apps\functions\dist"`, `Loaded functions definitions from source: helloWorld`, `http function initialized (http://127.0.0.1:5001/demo-qx-ci/southamerica-east1/helloWorld)`. El `curl` respondió `{"result":{"message":"Hello from Firebase Cloud Functions","estados_pedido":["CON_ERROR",…,"CANCELADO"]}}`.
+  - **Recarga:** con `dev` corriendo, cambié el mensaje en `src/callables/helloWorld.ts`. `tsc --watch` recompiló a `dist/lib` y unos 8 s después el emulador respondió el mensaje nuevo, sin reiniciarlo. El cambio se revirtió.
+  - **`predeploy`:** los tres comandos de `firebase.json`, corridos desde la raíz sin `lib/`, `dist/` ni `packages/shared/dist`, arman `dist/{lib,package.json,vendor/sistema-redespachos-shared-0.0.1.tgz}`. `prepareDeploy` borra `dist/` al empezar (probado con un archivo viejo, que no sobrevive).
+
+- **Evidencia del criterio de aceptación:**
+  1. **`pnpm build` genera `apps/functions/lib`:** `index.js`, `globalOptions.js`, `callables/helloWorld.js` y los 12 dominios (ver "Consumo real"). ✔
+  2. **Deploy real:** **pendiente de Franco.** No tengo credenciales del proyecto y no corrí `firebase deploy` contra ningún proyecto. En esta máquina hay Application Default Credentials y no quise llamar APIs reales con ellas. Queda verificado localmente con el emulador y la simulación de Cloud Build. Comando: `pnpm exec firebase deploy --only functions --project qx-redespachos-dev`; después, llamar `southamerica-east1-helloWorld`.
+  3. **`DEPLOY_ENABLED`:** extraje el bloque `run` de `Check deploy config` de `deploy.yml` y lo corrí con `bash -e`, con `GITHUB_OUTPUT` y `GITHUB_STEP_SUMMARY` apuntando a archivos (simulación local, no un run de GitHub):
+     - Sin la variable: exit 0, `enabled=false`, `::notice` y resumen "## Deploy a dev desactivado … vale `(sin definir)`, no `true` … **no despliega**".
+     - `DEPLOY_ENABLED=false`: igual, con "vale `false`".
+     - `true` sin secrets: **exit 1**, `::error title=Faltan secrets de deploy::DEPLOY_ENABLED es 'true' pero faltan: GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL. …` y el resumen "## Deploy a dev fallido: faltan secrets".
+     - `true` con un solo secret: exit 1, nombra solo el que falta.
+     - `true` con los dos: exit 0, `enabled=true`.
+
+     Con `js-yaml` (ya instalado como dependencia de `firebase-tools`) confirmé que los dos workflows parsean. Auth y deploy tienen `if: steps.deploy_config.outputs.enabled == 'true'`. **Falta el run real en GitHub** con la variable creada: lo puede disparar Franco después del merge.
+
+  4. **Secuencia de §5.5 en verde:** ver arriba. ✔
+  5. **Opción de empaquetado:** ver Decisiones. ✔
+  6. **Carga con Node puro, 2ª gen y región:** ver "Consumo real" y `nodeRuntime.test.ts`. ✔
+  7. **`Build shared` antes de `Lint`:** en `ci.yml` es el paso 4 y `Lint` el 5. En `deploy.yml` es el 5 y `Lint` el 6, porque `Check deploy config` es el paso 1. ✔
+
+- **Decisiones tomadas:**
+  - **Empaquetado, opción 1 (`predeploy` + carpeta de deploy):** es la única de las tres que no suma dependencias. `pnpm deploy` deja `shared` como dependencia de registro que npm no encuentra en Cloud Build. El bundle necesita `esbuild` (`CR: deps`) y además obliga a reescribir el `package.json` igual. `dist/` va anidado en `apps/functions` para que el CLI y el emulador resuelvan `node_modules` hacia arriba sin instalar nada en local.
+  - **Versiones fijas desde `pnpm list --prod --json --depth 1`:** `firebase-admin` y `firebase-functions` como dependencias exactas; `zod` y `decimal.js` (las de `shared`) en `overrides`. **Las transitivas más profundas quedan sin lock en Cloud Build**: no se sube lockfile y npm las resuelve por rango.
+  - **`setGlobalOptions` en `src/globalOptions.ts`, importado primero desde `index.ts`,** y no en el cuerpo de `index.ts` (desvío del ajuste 5; ver PREGUNTAS). Con la llamada en el cuerpo, Node deja `region: undefined`; lo verifiqué con una mutación.
+  - **Dos tests:**
+    - `index.test.ts` controla los exports, que la callable sea de 2ª gen con región y la respuesta del handler.
+    - `nodeRuntime.test.ts` compila con `tsc` y carga con Node puro. Hace falta porque Vitest (vite-node) **no** reproduce el orden de evaluación de ESM: con la mutación, `index.test.ts` siguió en verde y `nodeRuntime.test.ts` falló. Tarda unos 4 a 5 s y escribe en `apps/functions/node_modules/.cache/`.
+  - **Sin `.d.ts` en el build de `functions`:** no se consume como librería, y el `.d.ts` de `helloWorld` rompía `pnpm lint` corrido después de un build local (ver el CR de ESLint).
+  - **`deploy.yml` corre `Check deploy config` antes del install,** para fallar rápido si está activado sin secrets.
+
+- **Supuestos:**
+  - `engines.node: "22"` (rango `22.x`) es lo que Cloud Functions toma como runtime `nodejs22`. Verificado: `getRuntimeChoice` de `firebase-tools` 13.35.1 sobre `apps/functions/dist` devuelve `nodejs22`.
+  - Los nombres desplegados por dominio salen de la forma de agrupar de `firebase-functions` (`<dominio>-<función>`); hoy los 12 namespaces están vacíos y el emulador los carga sin error.
+
+- **Fuera de alcance:**
+  - Texto de `docs/CI.md` y la desactualización de `docs/FIREBASE.md`: en PREGUNTAS, los aplica Franco.
+  - Línea de `AGENTS.md` §3: en PREGUNTAS, la aplica Franco.
+  - `CR: eslint — ignorar salidas de build anidadas`: texto en PREGUNTAS, lo registra Franco.
+  - Hosting en el deploy: va con el ticket que mapee el target `web` (H-06, sin número todavía).
+  - Upgrade de `firebase-functions` (el emulador avisa "outdated version"): es una major, va como `CR: deps` (H-08).
+  - `src/firebase-init.ts` sigue sin importarse y viaja en `lib/`: sin ticket, lo toman MVP-06 o MVP-10 cuando usen Admin.
+
+- **Riesgos y deuda** (qué conviene que el auditor mire primero):
+  1. **El deploy real no se probó** (criterio 2) ni el run de GitHub con la variable (criterio 3, solo simulado).
+  2. **Orden de evaluación ESM:** cualquier carril que cree una función tiene que importarla a través del índice raíz, que ya importa `globalOptions.js` primero. Una función importada por otra vía antes de `globalOptions` quedaría sin región. `nodeRuntime.test.ts` lo cubre para `helloWorld`; conviene extenderlo a cada dominio cuando tenga funciones.
+  3. **Transitivas sin lock en Cloud Build:** un deploy puede traer versiones distintas de las que se testearon en CI.
+  4. **Flujo local:** el emulador lee `dist/`, no `src/`. Sin `pnpm --filter @sistema-redespachos/functions dev` corriendo, el emulador sirve código viejo o no arranca. En Windows, detener el proceso padre puede dejar vivos el `tsc --watch` y el emulador (me pasó con mis propios procesos y los cerré a mano).
