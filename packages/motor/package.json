@@ -16,7 +16,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "golden:update": "tsc -p tsconfig.build.json && node scripts/golden-update.js"
   },
   "dependencies": {
     "@sistema-redespachos/shared": "workspace:*",
