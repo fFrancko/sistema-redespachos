@@ -6,6 +6,25 @@ Dos workflows de GitHub Actions: `ci.yml` valida cada PR (y cada push a `main`),
 
 Todos los workflows usan **Node 22.x fijo**, sin matrix. Coincide con el runtime de Cloud Functions 2ª gen (arquitectura v3 §1) y con `engines.node >=22` del `package.json` raíz. El borrador inicial del ticket decía 20.x; se cambió a 22.x por esa coincidencia con Functions.
 
+## Runner y versiones de actions
+
+Los dos workflows corren en **`runs-on: ubuntu-24.04` fijo**, no en `ubuntu-latest`. Entre el 19/10 y el 19/11/2026 GitHub mueve la etiqueta `ubuntu-latest` de Ubuntu 24.04 a 26.04 de forma gradual, y un run cualquiera de ese mes podría caer en otra imagen sin que nadie haya tocado el repo. El paso a 26.04 va en un `CR` aparte, con un run de prueba previo (CR-09).
+
+Regla: **toda action se usa en una versión que declare `using: node24`** en su `action.yml`. GitHub quitó Node 20 de los runners el 23/09/2026. Se elige la mayor más reciente con `node24` y al menos un mes publicada, por etiqueta (sin SHA fijos).
+
+| Action                                   | Versión  | Workflows              |
+| ---------------------------------------- | -------- | ---------------------- |
+| `actions/checkout`                       | `v6`     | `ci.yml`, `deploy.yml` |
+| `actions/setup-node`                     | `v6`     | `ci.yml`, `deploy.yml` |
+| `pnpm/action-setup`                      | `v6`     | `ci.yml`, `deploy.yml` |
+| `marocchino/sticky-pull-request-comment` | `v3.0.5` | `ci.yml`               |
+| `actions/upload-artifact`                | `v6`     | `ci.yml`               |
+| `google-github-actions/auth`             | `v3`     | `deploy.yml`           |
+
+`sticky-pull-request-comment` no publica la etiqueta flotante `v3`: se fija la versión exacta y Dependabot sube parches y menores.
+
+**La versión de pnpm sale de `packageManager` en el `package.json` raíz** (`pnpm@9.15.9`), no del input `version` de `pnpm/action-setup`. Desde `v4`, esa action falla con "Multiple versions of pnpm specified" si los dos valores no coinciden exactamente; por eso los workflows no pasan `version`. Para cambiar de pnpm se cambia solo `packageManager`.
+
 ## CI en Pull Request (`.github/workflows/ci.yml`)
 
 Se dispara en `pull_request` (cualquier rama destino) y en `push` a `main`. Un solo job, `validate`, con estos pasos en orden:
@@ -95,13 +114,10 @@ El emulador lee `apps/functions/dist` y no corre el `predeploy`. Flujo:
 3. En otra terminal, `pnpm dev:emulator`: el emulador vigila `dist/` y recarga las funciones con cada cambio en `src`.
 
 En local, `dist/` no tiene `node_modules`: las dependencias se resuelven subiendo a `apps/functions/node_modules`.
-```
-
-Además, `docs/FIREBASE.md` (línea 49) dice que el deploy "hoy se omite por falta de secrets" y que `apps/functions` "todavía no es desplegable (MVP-31)"; con este ticket queda desactualizado.
 
 ## Dependabot
 
-Abre PRs semanales de npm y GitHub Actions, **solo de parches y versiones menores**: `.github/dependabot.yml` ignora `version-update:semver-major` en los dos ecosistemas (`dependency-name: "*"`). Las majors entran a mano como `CR: deps` (decisión P-12, H-08). Ningún agente mergea ni aprueba PRs de Dependabot: las revisa Franco. Las 15 PRs abiertas al cierre de la Ola 0 son todas majors y se cierran a mano.
+Abre PRs semanales de npm y GitHub Actions, **solo de parches y versiones menores**: `.github/dependabot.yml` ignora `version-update:semver-major` en los dos ecosistemas (`dependency-name: "*"`). Las majors entran a mano como `CR: deps` (decisión P-12, H-08). Ningún agente mergea ni aprueba PRs de Dependabot: las revisa Franco. Las 15 PRs abiertas al cierre de la Ola 0 son todas majors y se cierran a mano. Las majors de GitHub Actions se suben a mano como `CR` (el primero fue CR-09, ver "Runner y versiones de actions") y las PRs de Dependabot que proponen esas majors se cierran.
 
 Firestore: `firestore.rules` es *deny-all* hasta MVP-07; `deploy.yml` no despliega reglas.
 

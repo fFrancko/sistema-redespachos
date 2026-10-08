@@ -2,7 +2,7 @@
   "name": "sistema-redespachos",
   "version": "0.0.1",
   "type": "module",
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@9.15.9",
   "description": "Sistema de cotización y gestión de redespachos para QX",
   "engines": {
     "node": ">=22"
