@@ -93,20 +93,104 @@ Worktree `../sistema-redespachos-cr09`, rama `cr-09-actions-node24` desde `origi
 ## PREGUNTAS
 
 1. **`docs/CI.md` tiene un cierre de bloque de código suelto en la línea 98** (un ` ``` ` solo, después de "Functions en local", venido de MVP-31). Ese bloque nunca se cierra, así que en GitHub todo lo que sigue, `## Dependabot` incluida, se ve como código. Además, el párrafo que le sigue (línea 100, sobre `docs/FIREBASE.md`) parece una nota de ticket pegada por error. Ninguna de las dos líneas está en las secciones que me permite el punto 5. Propuesta: no las toco y van a un `CR` de docs aparte. Si preferís que borre solo la línea 98 en este CR (son 4 caracteres y arregla cómo se ve la oración nueva de Dependabot), decímelo.
+   - **Respuesta de Franco:** se arregla en este CR. Borrar las líneas 98 (el cierre suelto) y 100 (la nota sobre `docs/FIREBASE.md`). Va en "Decisiones tomadas" como ampliación del alcance aprobada por Franco.
 
 ---
 
 ## Nota de entrega (la completa el agente al terminar)
 
 - **Qué se hizo:**
-- **Commit:**
-- **Archivos tocados:**
-- **Cómo probarlo:**
-- **Resultado de la verificación:**
-- **Runtime de cada action (punto 4):**
+  - Seis actions subidas a refs con `node24`, en las dos apariciones de cada una: `checkout`, `setup-node`, `upload-artifact` y `pnpm/action-setup` a `v6`, `sticky-pull-request-comment` a `v3.0.5` y `google-github-actions/auth` a `v3`. No cambió ningún otro input.
+  - `runs-on: ubuntu-24.04` en `ci.yml` y `deploy.yml`.
+  - `pnpm/action-setup` ya no recibe `with: version: 9`. `packageManager` pasa de `pnpm@9.0.0` a `pnpm@9.15.9`.
+  - `docs/CI.md`: sección `## Runner y versiones de actions` (runner fijo y por qué, tabla, regla `node24`, pnpm desde `packageManager`) y la oración en `## Dependabot`. Además se borraron el cierre de bloque suelto y la nota sobre `docs/FIREBASE.md` (ver Decisiones).
+- **Commit:** `4aeb616` en `cr-09-actions-node24` (código, docs y plan). Esta nota va en el commit siguiente, como en MVP-31. Sin push ni PR. Worktree propio: `../sistema-redespachos-cr09`. La rama no tiene upstream configurado: se le quitó el `origin/main` que `git worktree add` le asignó, para que un `git push` sin argumentos no apunte a `main`.
+- **Archivos tocados:** `.github/workflows/ci.yml`, `.github/workflows/deploy.yml`, `package.json` (solo `packageManager`), `docs/CI.md` y este ticket.
+- **Cómo probarlo:** con pnpm 9.15.9, en un clon limpio:
+  ```bash
+  pnpm install --frozen-lockfile && git status --short   # pnpm-lock.yaml no aparece
+  pnpm format && pnpm ci:run
+  grep -rn "uses:\|runs-on" .github/workflows
+  ```
+  La prueba real son los runs de criterio 5.
+- **Resultado de la verificación** (Windows, Node v26.10.0, pnpm 9.15.9; sin `dist/` previos: worktree recién creado, `find . -name dist -not -path "*/node_modules/*"` vacío):
+  - Entorno: no hay `corepack`, y el pnpm global es 9.0.0. Se instaló pnpm 9.15.9 con `npm install --prefix` en el scratchpad de la sesión, fuera del repo, y se puso primero en el `PATH`. El pnpm global no se tocó.
+  - `pnpm --version` → `9.15.9`.
+  - `pnpm install --frozen-lockfile` → `Done in 46.7s using pnpm v9.15.9`, exit 0. `git status --short` después: solo los cuatro archivos editados y el ticket; `pnpm-lock.yaml` sin cambios.
+  - `pnpm format` → solo reformateó `tickets/CR-09-actions-node24.md` (la tabla de versiones y el código en línea de PREGUNTAS). Los dos workflows y `package.json` quedaron igual.
+  - `pnpm ci:run`, exit 0:
+    ```
+    > pnpm --filter @sistema-redespachos/shared build && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
+    > eslint apps/web/src apps/functions packages --max-warnings 0
+    > prettier --check .
+    Checking formatting...
+    All matched files use Prettier code style!
+    packages/shared typecheck: Done
+    apps/web typecheck: Done
+    packages/motor typecheck: Done
+    apps/functions typecheck: Done
+     Test Files  31 passed (31)
+          Tests  770 passed (770)
+    packages/shared build: Done
+    packages/motor build: Done
+    apps/functions build: Done
+    apps/web build: ✓ built in 1.35s
+    apps/web build: Done
+    ```
+  - Emuladores: `firebase emulators:exec --only auth,firestore --project demo-qx-ci "pnpm test:coverage"` **no corrió en local**: `Error: Could not spawn 'java -version'` (no hay Java en este equipo). Sin emuladores, `CI=true pnpm test:coverage` da exit 0, `31 passed`, `770 passed` y `All files | 95.17 | 95.53 | 88.88 | 95.17`, y genera `coverage/coverage-summary.json`, que es lo que leen el comentario y el artefacto. Con emuladores se prueba en el run de la PR.
+  - Los dos YAML parsean (con `js-yaml`) y el orden de pasos es el mismo que en `origin/main`. `ci.yml`: Checkout → Setup pnpm → Setup Node → Install → Build shared → Lint → Format check → Typecheck → Test motor → Test con cobertura → Build → comentario → artefacto. `deploy.yml`: Checkout → Check deploy config → Setup pnpm → … → Build → Authenticate (`if: enabled == 'true'`) → Deploy Functions (mismo `if`).
+- **Runtime de cada action (punto 4)** (`git clone --depth 1 --branch <tag>` en el scratchpad, fuera del repo; entre corchetes, la fecha del commit del tag):
+  ```
+  actions/checkout@v6: using: node24  [2026-07-16]
+  actions/setup-node@v6: using: node24  [2026-07-13]
+  actions/upload-artifact@v6: using: node24  [2025-12-12]
+  pnpm/action-setup@v6: using: node24  [2026-08-03]
+  marocchino/sticky-pull-request-comment@v3.0.5: using: node24 [2026-07-05]
+  google-github-actions/auth@v3: using: node24  [2025-08-28]
+  ```
+  Las seis cumplen el mes de publicadas. `git ls-remote --tags` de `sticky-pull-request-comment` no muestra la etiqueta `v3`, así que se fija la versión exacta. En `pnpm/action-setup@v6`, `src/install-pnpm/run.ts:141` tira `Multiple versions of pnpm specified` cuando `version` y `packageManager` no coinciden exactamente (sin el hash de integridad). `npm view pnpm@9 version` da `9.15.9` como última 9.x.
 - **Consumo real:** no aplica (la prueba real es el run de la PR; ver criterio 5).
 - **Evidencia del criterio de aceptación:**
+  1. `grep -rn "uses:" .github/workflows`:
+     ```
+     .github/workflows/ci.yml:22:        uses: actions/checkout@v6
+     .github/workflows/ci.yml:25:        uses: pnpm/action-setup@v6
+     .github/workflows/ci.yml:28:        uses: actions/setup-node@v6
+     .github/workflows/ci.yml:84:        uses: marocchino/sticky-pull-request-comment@v3.0.5
+     .github/workflows/ci.yml:91:        uses: actions/upload-artifact@v6
+     .github/workflows/deploy.yml:21:        uses: actions/checkout@v6
+     .github/workflows/deploy.yml:60:        uses: pnpm/action-setup@v6
+     .github/workflows/deploy.yml:63:        uses: actions/setup-node@v6
+     .github/workflows/deploy.yml:90:        uses: google-github-actions/auth@v3
+     ```
+     El punto 4 da `node24` para las seis (arriba).
+  2. `grep -rn "runs-on" .github/workflows` → `ci.yml:15: runs-on: ubuntu-24.04` y `deploy.yml:14: runs-on: ubuntu-24.04`. `grep -rn "version:" .github/workflows` → solo `node-version: 22.x` (líneas 30 y 65, de `setup-node`). Ningún `pnpm/action-setup` tiene input `version`: el parseo YAML muestra los dos sin `with`.
+  3. `pnpm --version` → `9.15.9`. `pnpm install --frozen-lockfile` no modifica `pnpm-lock.yaml`, y `pnpm ci:run` da verde (salida arriba). Los emuladores no corrieron en local por falta de Java.
+  4. `git diff --stat origin/main...HEAD` (sobre `4aeb616`; el commit de esta nota suma solo este ticket):
+     ```
+      .github/workflows/ci.yml        |  14 +++--
+      .github/workflows/deploy.yml    |  12 ++---
+      docs/CI.md                      |  24 +++++++--
+      package.json                    |   2 +-
+      tickets/CR-09-actions-node24.md | 112 ++++++++++++++++++++++++++++++++++++++++
+      5 files changed, 144 insertions(+), 20 deletions(-)
+     ```
+  5. Pendiente de Franco, después del push: los runs de `CI` (PR) y `Deploy to Dev` (`main`), con sus links.
 - **Decisiones tomadas:**
+  - **Ampliación del alcance aprobada por Franco:** en `docs/CI.md` se borraron el cierre de bloque suelto de la línea 98 y la nota de la línea 100 sobre `docs/FIREBASE.md`, ambos venidos de MVP-31 (ver PREGUNTAS 1). Con el cierre suelto, GitHub mostraba como código todo lo que seguía, incluidas `## Dependabot` y la oración nueva. También se quitó la línea en blanco 99, para que no quedaran dos seguidas.
+  - **`pnpm format` y `docs/CI.md`:** `docs/CI.md` figura en `.prettierignore` (bloque `TEMPORAL`), así que `pnpm format` no le cambia nada, tampoco ahora que el texto quedó fuera del bloque de código. Lo confirman `prettier --file-info docs/CI.md` → `"ignored": true` y un `diff` antes y después de `pnpm format` sin diferencias. No hubo cambios de formato ni de contenido fuera de lo editado a mano. La tabla nueva se alineó a mano con el mismo resultado que da `prettier --parser markdown` sobre una copia en el scratchpad (`diff` vacío), para que quede igual a la tabla `DEPLOY_ENABLED`.
+  - La oración de Dependabot dice "como `CR`", no "como `CR: deps`", porque el ticket aclara que este cambio no es un `CR: deps`.
+  - Dos commits (implementación y nota), como en MVP-31 y MVP-15, en lugar del "un solo commit" del plan: la nota necesita el hash del commit de implementación.
 - **Supuestos:**
+  - Node v26.10.0 en local, contra 22.x en CI. El ticket no cambia código ni Node, así que la diferencia no afecta la verificación. El run de la PR corre en 22.x.
+  - `setup-node@v6` con `cache: pnpm` explícito sigue igual: desde v5, el caché automático por `packageManager` es solo para npm, y acá el input `cache` se pasa explícito.
 - **Fuera de alcance:**
+  - `docs/FIREBASE.md` l.49 quedó desactualizada después de MVP-31: dice que el deploy "hoy se omite por falta de secrets" y que `apps/functions` "todavía no es desplegable". Sin ticket por ahora.
+  - Migrar a `ubuntu-26.04`: `CR` aparte, con un run de prueba previo (ver "Fuera de alcance" del ticket).
+  - Cerrar las PRs de Dependabot de estas majors: Franco, después del merge.
+  - Fijar actions por SHA, subir Node 22 del proyecto, subir pnpm a 10: sin ticket.
 - **Riesgos y deuda:**
+  - `google-github-actions/auth@v3` no se ejercita hasta que haya secrets y `DEPLOY_ENABLED=true`. Los inputs son los mismos, pero el primer deploy real es la primera prueba.
+  - Los emuladores no se probaron en local (falta Java). `upload-artifact@v6` y `sticky-pull-request-comment@v3.0.5` solo se prueban en el run de la PR (criterio 5).
+  - `ubuntu-24.04` fijo pasa a ser deuda cuando GitHub anuncie el retiro de esa imagen: el `CR` de 26.04 tiene que entrar antes.
+  - El aviso `failed to delete '.git/worktrees/sistema-redespachos-mvp15|mvp31|mvp31-apoyo': Permission denied` aparece en cada `git worktree add` y `commit`: hay metadatos de worktrees viejos que git no puede limpiar, probablemente por un archivo abierto o por permisos. No afecta este ticket; se limpia con `git worktree prune` cuando esas carpetas no estén en uso.
