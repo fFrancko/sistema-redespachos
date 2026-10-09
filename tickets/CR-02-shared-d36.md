@@ -73,7 +73,7 @@ Worktree `../sistema-redespachos-cr02`, rama `cr-02-shared-d36` desde `origin/ma
 
 - **Qué se hizo:** `orderRow.ts` exporta `buildFullOrigenTms(fila)`, una función pura que devuelve todas las columnas del TMS que trae la fila (las 47 y las opcionales presentes), con su `origenKey` y el valor recortado sin convertir, en el orden de `TMS_ALL_COLUMNS`. Las columnas ausentes de la fila no se agregan. `parseTmsRow` la usa al final, después de todas las validaciones, si `errores` no está vacío; en las filas válidas `origen_tms` sigue con las 28 columnas no mapeadas. La lectura de celdas de la fila pasó a un helper interno (`readTmsCells`) que comparten las dos funciones, así que reconocen los encabezados y recortan igual. En `orders.ts` solo cambió el comentario de `invalidOrderSchema`; ningún esquema cambió.
 - **Autorización:** Franco autorizó tocar `packages/shared` en este `CR: shared`, solo en los archivos permitidos del ticket (OK del 9/10/2026). No se tocó `headers.ts` ni el fixture.
-- **Commit:** ver `git log -1` en `cr-02-shared-d36` (código, tests y este ticket en el mismo commit). Sin push ni PR. Worktree propio: `../sistema-redespachos-cr02`, rama creada desde `origin/main` (`ba7f3dd`) después de `git fetch`. Se le quitó el upstream `origin/main` que puso `git worktree add`, como en CR-09, para que un `git push` sin argumentos no apunte a `main`.
+- **Commit:** `dcacf59` en `cr-02-shared-d36` (código, tests, plan y la primera versión de esta nota). Los ajustes de la nota pedidos en la revisión de Franco van en el commit siguiente, que solo toca este ticket. Sin push ni PR. Worktree propio: `../sistema-redespachos-cr02`, rama creada desde `origin/main` (`ba7f3dd`) después de `git fetch`. Se le quitó el upstream `origin/main` que puso `git worktree add`, como en CR-09, para que un `git push` sin argumentos no apunte a `main`.
 - **Archivos tocados** (`git diff --stat origin/main...HEAD`):
   ```
    packages/shared/src/schemas/orders.test.ts    | 11 +++
@@ -140,7 +140,16 @@ Worktree `../sistema-redespachos-cr02`, rama `cr-02-shared-d36` desde `origin/ma
      - Reconstrucción → "cada fila con error reconstruye sus 47 columnas, en el orden de TMS_COLUMNS, con los valores del CSV": recorre `TMS_COLUMNS` (no el orden del objeto) en las 12 filas con error y compara con la celda del CSV recortada.
      - Además: `buildFullOrigenTms` sobre una fila válida (con un valor rellenado con espacios) devuelve las 47 columnas recortadas; valores sin convertir (monto, fecha, CP inválido); error en una columna no mapeada; columna mapeada ausente de la fila; columnas opcionales; `invalidOrderSchema` acepta un `origen_tms` con las columnas mapeadas.
 
-     **Fallan con `main`:** se puso el `orderRow.ts` de `origin/main` (más un `buildFullOrigenTms` que devuelve `{}`, porque sin esa exportación los archivos de test no cargan) y se corrieron los tres archivos de test sin tocarlos: `Tests  10 failed | 124 passed (134)`. Fallan los 6 tests nuevos de `orderRowRules.test.ts`, los 2 de reconstrucción y opcionales y los 2 de `buildFullOrigenTms` (estos dos, por el stub). Después se restauró el archivo y se repitió la corrida: `501 passed`.
+     **Fallan con `main`:** se puso el `orderRow.ts` de `origin/main` (más un `buildFullOrigenTms` que devuelve `{}`, porque sin esa exportación los archivos de test no cargan) y se corrieron los tres archivos de test sin tocarlos: `Tests  10 failed | 124 passed (134)`. Fallan los 6 tests nuevos de `orderRowRules.test.ts`, los 2 de reconstrucción y opcionales y los 2 de `buildFullOrigenTms` (estos dos, por el stub). Después se restauró el archivo (idéntico al de `dcacf59`) y se volvieron a correr los mismos tres archivos:
+
+     ```
+     pnpm exec vitest run packages/shared/src/tms/orderRow.test.ts packages/shared/src/tms/orderRowRules.test.ts packages/shared/src/schemas/orders.test.ts
+      ✓ packages/shared/src/schemas/orders.test.ts (71 tests)
+      ✓ packages/shared/src/tms/orderRow.test.ts (37 tests)
+      ✓ packages/shared/src/tms/orderRowRules.test.ts (26 tests)
+      Test Files  3 passed (3)
+           Tests  134 passed (134)
+     ```
 
      **Tests de protección, que pasan también con `main`:** "una fila válida no guarda en origen_tms ninguna columna mapeada (sin duplicación)", "el fixture tiene 12 filas con error y 8 válidas" y, en `orders.test.ts`, "origen_tms puede traer las columnas mapeadas con su valor crudo (D36)". Protegen que el cambio no se extienda a las filas válidas y que el esquema no se cierre, pero no prueban el cambio.
   2. Filas válidas sin cambios: los tests existentes de `orderRow.test.ts` y `orderRowRules.test.ts` no se modificaron (el diff de esos archivos solo agrega imports y bloques al final) y pasan, incluido "el resto de las columnas va a origen_tms… `toHaveLength(28)`".
