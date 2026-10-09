@@ -3,8 +3,14 @@ import { fileURLToPath } from 'node:url';
 import { parse } from 'csv-parse/sync';
 import { describe, expect, it } from 'vitest';
 import { orderImportSchema } from '../schemas/orders.js';
-import { resolveTmsHeaders } from './headers.js';
-import { parseTmsRow } from './orderRow.js';
+import {
+  TMS_ALL_COLUMNS,
+  TMS_COLUMNS,
+  TMS_OPTIONAL_COLUMNS,
+  normalizeHeader,
+  resolveTmsHeaders,
+} from './headers.js';
+import { buildFullOrigenTms, parseTmsRow } from './orderRow.js';
 import type { TmsRowContext } from './orderRow.js';
 
 const FIXTURE_PATH = fileURLToPath(
@@ -243,3 +249,91 @@ describe('parseTmsRow: datos de una fila válida completa', () => {
     }
   });
 });
+
+// Claves de `origen_tms` de las columnas que se mapean a un campo de `pedidos`.
+const MAPPED_ORIGEN_KEYS = TMS_ALL_COLUMNS.filter((column) => column.field !== null).map(
+  (column) => column.origenKey,
+);
+
+// Valor recortado de la celda del CSV que corresponde a la columna (por encabezado normalizado).
+function csvCell(record: Record<string, string>, key: string): string | undefined {
+  const header = Object.keys(record).find((candidate) => normalizeHeader(candidate) === key);
+  return header === undefined ? undefined : (record[header] ?? '').trim();
+}
+
+describe('origen_tms completo en las filas con error (D36)', () => {
+  const parsed = records.map((record) => ({ record, result: parseTmsRow(record, context) }));
+  const withErrors = parsed.filter(({ result }) => result.errores.length > 0);
+  const valid = parsed.filter(({ result }) => result.errores.length === 0);
+
+  it('el fixture tiene 12 filas con error y 8 válidas', () => {
+    expect(withErrors).toHaveLength(12);
+    expect(valid).toHaveLength(8);
+  });
+
+  it('cada fila con error reconstruye sus 47 columnas, en el orden de TMS_COLUMNS, con los valores del CSV', () => {
+    for (const { record, result } of withErrors) {
+      const origen = result.datos.origen_tms ?? {};
+      const rebuilt = TMS_COLUMNS.map((column) => origen[column.origenKey]);
+      const expected = TMS_COLUMNS.map((column) => csvCell(record, column.key));
+      expect(expected).not.toContain(undefined);
+      expect(rebuilt).toEqual(expected);
+    }
+  });
+
+  it('cada fila con error conserva también las 3 columnas opcionales que trae', () => {
+    for (const { record, result } of withErrors) {
+      const origen = result.datos.origen_tms ?? {};
+      for (const column of TMS_OPTIONAL_COLUMNS) {
+        expect(origen[column.origenKey]).toBe(csvCell(record, column.key));
+      }
+      expect(Object.keys(origen)).toHaveLength(TMS_ALL_COLUMNS.length);
+    }
+  });
+
+  it('una fila válida no guarda en origen_tms ninguna columna mapeada (sin duplicación)', () => {
+    for (const { result } of valid) {
+      const keys = Object.keys(result.datos.origen_tms ?? {});
+      expect(keys).toHaveLength(28);
+      for (const mapped of MAPPED_ORIGEN_KEYS) expect(keys).not.toContain(mapped);
+    }
+  });
+});
+
+describe('buildFullOrigenTms', () => {
+  const pesoHeader = TMS_ALL_COLUMNS.find((column) => column.field === 'peso_kgs')?.header ?? '';
+
+  it('sobre una fila válida devuelve las 47 columnas con su valor recortado', () => {
+    const record = setHeader(records[0] as Record<string, string>, pesoHeader, '  12.50 ');
+    expect(parseTmsRow(record, context).errores).toEqual([]);
+    const origen = buildFullOrigenTms(record);
+    const values = TMS_COLUMNS.map((column) => origen[column.origenKey]);
+    expect(values).toEqual(TMS_COLUMNS.map((column) => csvCell(record, column.key)));
+    expect(values).not.toContain(undefined);
+    expect(values).toContain('12.50');
+    expect(Object.keys(origen)).toEqual(TMS_ALL_COLUMNS.map((column) => column.origenKey));
+  });
+
+  it('no cambia el origen_tms que parseTmsRow devuelve para una fila válida', () => {
+    const record = records[0] as Record<string, string>;
+    const result = parseTmsRow(record, context);
+    expect(result.errores).toEqual([]);
+    expect(Object.keys(result.datos.origen_tms ?? {})).toHaveLength(28);
+    expect(Object.keys(buildFullOrigenTms(record))).toHaveLength(TMS_ALL_COLUMNS.length);
+  });
+});
+
+// Reemplaza la celda de la columna (por encabezado normalizado) conservando el resto de la fila.
+function setHeader(
+  record: Record<string, string>,
+  header: string,
+  value: string,
+): Record<string, string> {
+  const key = normalizeHeader(header);
+  return Object.fromEntries(
+    Object.entries(record).map(([candidate, cell]) => [
+      candidate,
+      normalizeHeader(candidate) === key ? value : cell,
+    ]),
+  );
+}

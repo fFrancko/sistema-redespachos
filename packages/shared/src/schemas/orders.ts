@@ -213,7 +213,9 @@ export type Order = z.infer<typeof orderSchema>;
 
 // Pedido cuya fila falló la validación: `estado = CON_ERROR`, o `CANCELADO` si se canceló desde
 // `CON_ERROR` (§3.7) conservando la traza de `errores`. Los datos de importación pueden faltar.
-// Conserva `nro_pedido` y las columnas del TMS en `origen_tms`. Un `CANCELADO` sin errores
+// Conserva `nro_pedido` y, en `origen_tms`, todas las columnas del TMS que trajo la fila, incluidas
+// las que se mapean a campos, con su valor crudo (D36): de ahí sale el export de filas con error.
+// En `orderSchema`, `origen_tms` guarda solo las columnas no mapeadas. Un `CANCELADO` sin errores
 // (por ejemplo, desde VALIDADO) valida por `orderSchema`.
 export const invalidOrderSchema = orderImportSchema
   .partial()

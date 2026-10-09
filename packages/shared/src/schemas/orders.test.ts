@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { TMS_ALL_COLUMNS } from '../tms/headers.js';
 import {
   invalidOrderSchema,
   orderDocumentSchema,
@@ -444,6 +445,16 @@ describe('pedidos con error (CON_ERROR)', () => {
     ['dato presente pero mal formado', { codigo_postal: '14' }],
   ])('rechaza %s', (_label, override) => {
     expect(invalidOrderSchema.safeParse({ ...invalidOrder, ...override }).success).toBe(false);
+  });
+
+  it('origen_tms puede traer las columnas mapeadas con su valor crudo (D36)', () => {
+    const fullOrigen = Object.fromEntries(
+      TMS_ALL_COLUMNS.map((column) => [column.origenKey, column.field === 'peso_kgs' ? '0' : '']),
+    );
+    expect(TMS_ALL_COLUMNS.filter((column) => column.field !== null).length).toBeGreaterThan(0);
+    expect(invalidOrderSchema.safeParse({ ...invalidOrder, origen_tms: fullOrigen }).success).toBe(
+      true,
+    );
   });
 
   it('la colección pedidos acepta ambos tipos de documento', () => {
