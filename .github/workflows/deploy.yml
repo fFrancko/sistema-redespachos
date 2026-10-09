@@ -11,14 +11,14 @@ concurrency:
 jobs:
   deploy:
     name: Deploy to qx-redespachos-dev
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       id-token: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # MVP-31 (P-05): el deploy se activa con la variable de repositorio DEPLOY_ENABLED.
       # Activado y sin secrets, el job falla; desactivado, el resumen del run lo dice.
@@ -57,12 +57,10 @@ jobs:
           echo "enabled=true" >> "$GITHUB_OUTPUT"
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js 22.x
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22.x
           cache: pnpm
@@ -89,7 +87,7 @@ jobs:
 
       - name: Authenticate to Google Cloud
         if: steps.deploy_config.outputs.enabled == 'true'
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
