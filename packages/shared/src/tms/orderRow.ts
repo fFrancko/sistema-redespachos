@@ -19,6 +19,7 @@ export interface TmsRowContext {
 
 export interface TmsRowResult {
   // Campos de la fila que se pudieron interpretar. Con `errores` vacío cumple `orderImportSchema`.
+  // Con errores, `origen_tms` trae todas las columnas de la fila (`buildFullOrigenTms`, D36).
   datos: Partial<OrderImport>;
   errores: OrderRowError[];
   observaciones: ObservationCode[];
@@ -56,6 +57,30 @@ const DIMENSION_FIELDS: readonly DimensionField[] = ['alto_cm', 'ancho_cm', 'lar
 
 const CUBIC_CM_PER_M3 = 1_000_000;
 
+// Celdas reconocidas de la fila, por clave de columna, con el valor recortado.
+function readTmsCells(fila: TmsRawRow): Map<string, string> {
+  const cells = new Map<string, string>();
+  for (const [header, value] of Object.entries(fila)) {
+    const column = TMS_COLUMN_BY_KEY.get(normalizeHeader(header));
+    if (column !== undefined) cells.set(column.key, (value ?? '').trim());
+  }
+  return cells;
+}
+
+// `origen_tms` completo de una fila (D36): todas las columnas del TMS que trae la fila, mapeadas o
+// no, con su `origenKey` y el valor crudo recortado, sin convertir, en el orden de `TMS_ALL_COLUMNS`.
+// Las columnas ausentes de la fila no se agregan. `parseTmsRow` la usa cuando la fila tiene errores;
+// el importador (MVP-17), cuando agrega el error `DUPLICADO`, que este parser no detecta.
+export function buildFullOrigenTms(fila: TmsRawRow): Record<string, string> {
+  const cells = readTmsCells(fila);
+  const origen: Record<string, string> = {};
+  for (const column of TMS_ALL_COLUMNS) {
+    const cell = cells.get(column.key);
+    if (cell !== undefined) origen[column.origenKey] = cell;
+  }
+  return origen;
+}
+
 // Los mensajes nunca incluyen valores de la fila (destinatarios y direcciones: Ley 25.326).
 export function parseTmsRow(fila: TmsRawRow, contexto: TmsRowContext): TmsRowResult {
   const errores: OrderRowError[] = [];
@@ -69,11 +94,7 @@ export function parseTmsRow(fila: TmsRawRow, contexto: TmsRowContext): TmsRowRes
   };
 
   // Una pasada para ubicar cada celda en su campo o en `origen_tms`.
-  const cells = new Map<string, string>();
-  for (const [header, value] of Object.entries(fila)) {
-    const column = TMS_COLUMN_BY_KEY.get(normalizeHeader(header));
-    if (column !== undefined) cells.set(column.key, (value ?? '').trim());
-  }
+  const cells = readTmsCells(fila);
   for (const column of TMS_ALL_COLUMNS) {
     const cell = cells.get(column.key);
     if (cell === undefined) continue;
@@ -198,6 +219,10 @@ export function parseTmsRow(fila: TmsRawRow, contexto: TmsRowContext): TmsRowRes
       observaciones.push('VOLUMEN_INCONSISTENTE');
     }
   }
+
+  // D36: un pedido con error guarda en `origen_tms` todas sus columnas crudas, para el export de
+  // filas con error (MVP-19). Va al final, cuando ya se conocen todos los errores.
+  if (errores.length > 0) datos.origen_tms = buildFullOrigenTms(fila);
 
   return { datos, errores, observaciones };
 }
