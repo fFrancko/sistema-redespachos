@@ -4,6 +4,8 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  // El .env.local se lee de la raíz del repo, junto a .env.local.template (docs/FIREBASE.md).
+  envDir: '../../',
   resolve: {
     alias: {
       '@shared': path.resolve(__dirname, '../../packages/shared/src'),

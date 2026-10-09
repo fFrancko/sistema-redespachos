@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '../components/ui/button';
 import logoPositivo from '../app/assets/logo-positivo.png';
 import { useAuth } from './AuthProvider';
+import { SignInError } from './gateway';
 
 export function LoginPage() {
   const { state, signIn } = useAuth();
@@ -11,7 +12,9 @@ export function LoginPage() {
     setError(null);
     try {
       await signIn();
-    } catch {
+    } catch (failure) {
+      // Cerrar el popup no es un error para la persona: no se muestra mensaje.
+      if (failure instanceof SignInError && failure.reason === 'cancelado') return;
       setError('No se pudo iniciar sesión con Google. Probá de nuevo.');
     }
   }

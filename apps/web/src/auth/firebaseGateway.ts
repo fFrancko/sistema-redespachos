@@ -6,7 +6,20 @@ import {
   signOut,
   type Auth,
 } from 'firebase/auth';
-import type { AuthGateway } from './gateway';
+import { SignInError, type AuthGateway } from './gateway';
+
+const CANCELLED_CODES = new Set(['auth/popup-closed-by-user', 'auth/cancelled-popup-request']);
+
+export function toSignInError(error: unknown): SignInError {
+  const code =
+    typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
+      ? error.code
+      : undefined;
+  return new SignInError(
+    code !== undefined && CANCELLED_CODES.has(code) ? 'cancelado' : 'fallido',
+    code,
+  );
+}
 
 export function createFirebaseGateway(auth: Auth, hostedDomain?: string): AuthGateway {
   return {
@@ -32,7 +45,11 @@ export function createFirebaseGateway(auth: Auth, hostedDomain?: string): AuthGa
     async signInWithGoogle() {
       const provider = new GoogleAuthProvider();
       if (hostedDomain) provider.setCustomParameters({ hd: hostedDomain });
-      await signInWithPopup(auth, provider);
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (error) {
+        throw toSignInError(error);
+      }
     },
     async signOut() {
       await signOut(auth);

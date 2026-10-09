@@ -62,13 +62,27 @@ describe('isAllowed', () => {
 });
 
 describe('hostedDomain', () => {
-  it('devuelve el dominio solo si hay exactamente uno', () => {
+  it('devuelve el dominio si hay exactamente uno y la lista de emails está vacía', () => {
     expect(hostedDomain(accessListFromEnv({ VITE_ALLOWED_DOMAINS: 'qxlogistica.com' }))).toBe(
       'qxlogistica.com',
     );
+  });
+
+  it('no lo envía sin dominios o con más de uno', () => {
     expect(hostedDomain(accessListFromEnv({ VITE_ALLOWED_DOMAINS: '' }))).toBeUndefined();
     expect(
       hostedDomain(accessListFromEnv({ VITE_ALLOWED_DOMAINS: 'a.com,b.com' })),
+    ).toBeUndefined();
+  });
+
+  it('no lo envía si además hay emails en la lista (testers con Gmail en la transición)', () => {
+    expect(
+      hostedDomain(
+        accessListFromEnv({
+          VITE_ALLOWED_EMAILS: 'ana.perez@gmail.com',
+          VITE_ALLOWED_DOMAINS: 'qxlogistica.com',
+        }),
+      ),
     ).toBeUndefined();
   });
 });

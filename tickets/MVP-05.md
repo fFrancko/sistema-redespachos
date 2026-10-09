@@ -73,7 +73,15 @@ Fuera de este ticket: "verificado también en backend" (§3.1) va en MVP-08 (gua
   - Login con Google con lista de acceso (`VITE_ALLOWED_EMAILS` / `VITE_ALLOWED_DOMAINS`): email exacto o dominio exacto, solo si el email está verificado; con las dos listas vacías no entra nadie. Un email fuera de la lista dispara `signOut` y ve el mensaje. `hd` se envía solo con exactamente un dominio.
   - El claim `rol` se valida con `roleSchema` de `shared`. Sin claim válido, el usuario ve la pantalla pendiente con *Solicitar acceso* deshabilitado y "Disponible próximamente".
   - Tema Tailwind 3 / shadcn con #323e48 y #f5333f (variables RGB en `index.css`), `Button` y `cn()` en `components/ui/`.
-- **Commit:** `1b5071e` en la rama `mvp-05-login-shell` (esta nota va en un commit aparte); sin push ni PR.
+  - **Ajustes pre-auditoría (pedido de Franco, 9/10):**
+    - `envDir: '../../'` en Vite: el `.env.local` se lee de la raíz.
+    - `hd` solo con exactamente un dominio **y** la lista de emails vacía.
+    - El gateway normaliza el error de login en `SignInError` (`cancelado` / `fallido`, con el código original) y `LoginPage` no muestra mensaje si se cerró el popup.
+    - Test de la carrera `signOut` antes de que resuelva `getRoleClaim`.
+- **Commit:** en la rama `mvp-05-login-shell`, sin push ni PR.
+  - `1b5071e`: implementación.
+  - `44205c7`: nota de entrega.
+  - El commit siguiente a `44205c7`: ajustes pre-auditoría con esta nota actualizada.
 - **Archivos tocados** (`git diff --stat origin/main...HEAD` en `1b5071e`): 39 archivos, 1126 inserciones y 28 borrados.
   - Raíz: `.env.local.template`.
   - `apps/web`: `postcss.config.js` y `tailwind.config.js`.
@@ -82,18 +90,22 @@ Fuera de este ticket: "verificado también en backend" (§3.1) va en MVP-08 (gua
   - `apps/web/src/auth/`: `AuthGate.test.tsx`, `AuthProvider.tsx`, `LoginPage.tsx`, `PendingAccessPage.tsx`, `accessList.ts`, `accessList.test.ts`, `fakeGateway.ts`, `firebaseGateway.ts` y `gateway.ts`.
   - `apps/web/src/components/ui/`: `button.tsx` y `utils.ts`.
   - `apps/web/src/features/*/index.tsx` (12) y este ticket.
+  - Ajustes pre-auditoría:
+    - Modificados: `apps/web/vite.config.ts`, `.env.local.template` (comentario de `VITE_ALLOWED_DOMAINS`), y en `apps/web/src/auth/`: `accessList.ts`, `accessList.test.ts`, `gateway.ts`, `firebaseGateway.ts`, `fakeGateway.ts` y `LoginPage.tsx`.
+    - Nuevos: `apps/web/src/auth/AuthProvider.test.tsx` y `apps/web/src/auth/firebaseGateway.test.ts`.
+    - Este ticket.
   - Ningún archivo fuera de los permitidos.
 - **Cómo probarlo:**
   - Secuencia de CI: `pnpm install --frozen-lockfile && pnpm format && pnpm ci:run`.
   - Solo los tests de web: `pnpm exec vitest run apps/web`.
   - Prueba manual:
-    1. Crear `apps/web/.env.local` con `VITE_FIREBASE_EMULATOR=true`, `VITE_FIREBASE_PROJECT_ID=demo-qx-ci` y las dos listas. Ver el hallazgo sobre la ubicación en Riesgos.
+    1. En la raíz: `cp .env.local.template .env.local`. Con el emulador, poner `VITE_FIREBASE_PROJECT_ID=demo-qx-ci` y completar `VITE_ALLOWED_EMAILS` / `VITE_ALLOWED_DOMAINS`. Vite lo lee de la raíz por `envDir`.
     2. Levantar `pnpm exec firebase emulators:start --only auth --project demo-qx-ci` y `pnpm dev`.
-- **Resultado de la verificación:** desde estado limpio (sin `dist/`), salida real:
+- **Resultado de la verificación** (re-corrida con los ajustes pre-auditoría, desde estado limpio sin `dist/`; salida real):
 
   ```
-  pnpm install --frozen-lockfile   → Already up to date / Done in 1.3s using pnpm v9.15.9
-  pnpm format                      → sin cambios fuera de lo tocado
+  pnpm install --frozen-lockfile   → Done in 2.9s using pnpm v9.15.9
+  pnpm format                      → solo reformateó apps/web/src/auth/firebaseGateway.ts (tocado en este ajuste)
   pnpm ci:run:
   > pnpm --filter @sistema-redespachos/shared build && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
   > @sistema-redespachos/shared@0.0.1 build → tsc
@@ -104,27 +116,36 @@ Fuera de este ticket: "verificado también en backend" (§3.1) va en MVP-08 (gua
   packages/motor typecheck: Done
   apps/web typecheck: Done
   apps/functions typecheck: Done
-   Test Files  35 passed (35)
-        Tests  804 passed (804)
+   Test Files  37 passed (37)
+        Tests  815 passed (815)
   packages/shared build: Done
   packages/motor build: Done
   apps/functions build: Done
-  apps/web build: ✓ 166 modules transformed.
+  apps/web build: ✓ 167 modules transformed.
   apps/web build: dist/assets/logo-positivo-BYx1XTu6.png    4.92 kB
   apps/web build: dist/assets/logo-negativo-Diju7cr7.png    5.14 kB
   apps/web build: dist/assets/index-x-_RwVK4.css           10.12 kB │ gzip:   2.71 kB
-  apps/web build: dist/assets/index-qehNuMqc.js           575.04 kB │ gzip: 165.22 kB
-  apps/web build: ✓ built in 10.95s
+  apps/web build: dist/assets/index-DHfxjPd3.js           575.53 kB │ gzip: 165.38 kB
+  apps/web build: ✓ built in 4.88s
   apps/web build: Done
   ```
 
-  - Advertencias: `WARN Unsupported engine` de `apps/functions` (local con Node 26.10.0; el repo pide 22) y la de Vite por un chunk de más de 500 kB, que es Firebase. En el primer intento falló el typecheck (`main.tsx`: `ImportMetaEnv` contra `AccessEnv`); se corrigió y se re-corrió todo desde limpio.
-  - Mutaciones de control: si se quita la guarda por rol del router fallan los 5 casos de redirección, y si se quita el chequeo de `emailVerified` fallan los 2 tests de email no verificado.
+  - Advertencias: `WARN Unsupported engine` de `apps/functions` (local con Node 26.10.0; el repo pide 22) y la de Vite por un chunk de más de 500 kB, que es Firebase. En la primera entrega falló un typecheck (`main.tsx`: `ImportMetaEnv` contra `AccessEnv`), corregido antes de `1b5071e`.
+  - Mutaciones de control: cada una hace fallar su test y después se restauró el archivo.
+    - Sin la guarda por rol del router fallan los 5 casos de redirección.
+    - Sin el chequeo de `emailVerified` fallan los 2 tests de email no verificado.
+    - Sin el chequeo de generación de `AuthProvider` falla "signOut antes de que resuelva el claim…".
+    - Sin el filtro de `cancelado` en `LoginPage` falla "un login cancelado (popup cerrado) no muestra mensaje".
+    - Sin la condición de emails vacía en `hostedDomain` falla "no lo envía si además hay emails en la lista".
 - **Prueba manual con el emulador de Auth (9/10):** levanté el emulador solo de Auth y no `pnpm dev:emulator`: en esta máquina no hay Java y Firestore lo necesita. El navegador integrado abre el popup del emulador en la misma pestaña, así que el popup no puede completar. Igual se vio que la URL del widget lleva `customParameters={"hd":"qxlogistica.com"}`. El login lo hice con `signInWithCredential` (credencial Google del emulador) sobre la misma instancia de `auth` de la app, así que pasa por el mismo `onAuthStateChanged` → lista de acceso → claim.
   1. `intruso.prueba@gmail.com` → `auth.currentUser` en `null` y el mensaje "La cuenta … no tiene acceso al sistema".
   2. `alguien@qxlogistica.com` sin claim → "Acceso pendiente", con *Solicitar acceso* deshabilitado y "Disponible próximamente".
   3. Con `rol: ANALISTA` cargado por la API del emulador y la página recargada → layout con Cotización, Pedidos, Proformas, Liquidación y Órdenes de compra. `/usuarios` redirige a `/`, `/pedidos` muestra "En construcción" y *Cerrar sesión* vuelve al login sin mensaje.
-  - **Pendiente para Franco:** probar el popup real de Google en un navegador común.
+  - **Re-verificación de los ajustes (9/10):**
+    - Con `.env.local` copiado del template en la **raíz** (y sin `apps/web/.env.local`), el `import.meta.env` que sirve Vite trae las dos listas.
+    - Con emails y un dominio cargados, la URL del widget del emulador ya no lleva `customParameters` (sin `hd`).
+    - `intruso.prueba@gmail.com` → rechazado con mensaje y `currentUser` en `null`. `ana.perez@gmail.com` (en la lista, sin claim) → "Acceso pendiente". `signOut` → login sin mensaje.
+  - **Pendiente para Franco:** probar el popup real de Google en un navegador común, incluido cerrarlo sin elegir cuenta, que no debe mostrar mensaje.
 - **Consumo real:** el bundle de producción se construye con `vite build`, y en dev la app importa `@sistema-redespachos/shared` (`roleSchema`, `ROLES`) y corre en el navegador (prueba manual de arriba).
 - **Evidencia del criterio de aceptación:**
   - Email externo: `auth/AuthGate.test.tsx` › "un email externo cierra la sesión y ve el mensaje", más el caso desde el login y el de email no verificado.
@@ -132,7 +153,10 @@ Fuera de este ticket: "verificado también en backend" (§3.1) va en MVP-08 (gua
   - Con rol: "con rol %s ve el layout con la navegación de su rol", un caso por cada uno de los 5 roles.
   - Registro: `app/featureRegistry.test.ts` (ids exactos y comparación con las carpetas de `src/features`).
   - URL directa a una feature de otro rol: `app/router.test.tsx`.
-  - Función de acceso: `auth/accessList.test.ts` (mayúsculas y espacios, dominio exacto incluido `x@evilqxlogistica.com`, no verificado, listas vacías, `hd`).
+  - Función de acceso: `auth/accessList.test.ts` (mayúsculas y espacios, dominio exacto incluido `x@evilqxlogistica.com`, no verificado, listas vacías, `hd` solo con un dominio y sin emails).
+  - Carrera de sesión: `auth/AuthProvider.test.tsx` › "signOut antes de que resuelva el claim termina en el login, nunca en el layout".
+  - Popup cerrado sin mensaje y error real con mensaje: `auth/AuthProvider.test.tsx` › `LoginPage`.
+  - Mapeo de códigos de Firebase a `SignInError`: `auth/firebaseGateway.test.ts`.
 - **Decisiones tomadas:**
   - Las features exportan `routes: RouteObject[]` vacío y el shell pone "En construcción", así cada `index.tsx` queda realmente vacío y sin dependencias de `src/app`.
   - Una feature fuera del rol, o una URL desconocida, redirige a `/`, que muestra un inicio neutro.
@@ -141,17 +165,21 @@ Fuera de este ticket: "verificado también en backend" (§3.1) va en MVP-08 (gua
   - `App` recibe el gateway por props (`main.tsx` crea el real), así los tests no inicializan Firebase.
   - `afterEach(cleanup)` explícito en cada test de componente: con `singleFork`, Testing Library registra el cleanup automático solo en el primer archivo que lo carga.
   - Logos extraídos del base64 de la doc funcional §8.2 a `src/app/assets/`.
+  - `hd` solo con un dominio y la lista de emails vacía (Franco, 9/10): `hd` trabaría la elección de cuenta a los testers con Gmail durante la transición.
+  - `auth/popup-closed-by-user` y `auth/cancelled-popup-request` se mapean a `SignInError('cancelado')` en `firebaseGateway.ts`. `LoginPage` solo conoce `SignInError`, no los códigos de Firebase.
 - **Supuestos:** las listas se separan por coma y no distinguen mayúsculas; un `@` inicial en el dominio se ignora.
 - **Fuera de alcance:**
   - Verificación de dominio y lista en backend: MVP-08.
   - Callable `auth.requestAccess` y botón habilitado: MVP-06.
+  - **Para MVP-06:** botón para reintentar en la pantalla pendiente (volver a leer el claim sin cerrar sesión), y distinguir un error al leer el rol de "sin rol". Hoy los dos terminan en la pantalla pendiente.
   - Reglas de Firestore por rol: MVP-07.
   - Code splitting del bundle: sin ticket.
 - **Riesgos y deuda:**
   1. **La lista de emails queda visible en el bundle público:** las variables `VITE_*` se incrustan en el JS. Además es solo un filtro de UI: cualquiera puede autenticarse contra Firebase Auth y llamar a la API directamente. La protección real es MVP-07/08.
   2. **El build de CI y de preview necesita las dos variables cargadas.** Sin ellas el build pasa igual, pero la app desplegada rechaza a todos (listas vacías = nadie entra). Hay que cargarlas como variables de entorno del job de build de Hosting (MVP-32 / preview).
-  3. **Hallazgo:** `docs/FIREBASE.md` dice copiar el template a `.env.local` en la raíz, pero Vite (sin `envDir`) lee `apps/web/.env.local`, así que un `.env.local` en la raíz no se usa. Va por `CR` (`envDir` en `vite.config.ts` o corregir la doc).
-  4. **Deuda:** `firebase-debug.log` no está en `.gitignore` (lo genera el emulador).
-  5. **Deuda:** el chunk JS pesa 575 kB.
-  6. **Deuda:** `firebase.ts` (no tocado) usa el host de Firestore aunque no haya emulador de Firestore levantado.
-  7. **Para el auditor:** revisar primero `AuthProvider.tsx` (la carrera entre `onAuthStateChanged` y `getRoleClaim`, resuelta con un contador de generación) y la matriz de `featureRegistry.ts` contra §3.1 con el ajuste del 9/10.
+  3. **Deuda:** el chunk JS pesa 575 kB.
+  4. **Deuda:** `firebase.ts` (no tocado) usa el host de Firestore aunque no haya emulador de Firestore levantado.
+  5. **Para el auditor:** revisar primero `AuthProvider.tsx` (la carrera entre `onAuthStateChanged` y `getRoleClaim`, resuelta con un contador de generación) y la matriz de `featureRegistry.ts` contra §3.1 con el ajuste del 9/10.
+- **CR pendientes** (archivos compartidos, fuera de este ticket):
+  - `CR: vitest.config.ts` — `setupFiles` con el `cleanup` global de Testing Library. Reemplaza el `afterEach(cleanup)` repetido en cada test de componente, necesario hoy por `singleFork`.
+  - `CR: .gitignore` — agregar `firebase-debug.log` (lo genera el emulador en la raíz).

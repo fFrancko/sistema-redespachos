@@ -45,7 +45,9 @@ export function isAllowed(candidate: AccessCandidate, list: AccessList): boolean
   return list.domains.includes(email.slice(at + 1));
 }
 
-// Google acepta un solo dominio en `hd`: con varios configurados no se envía.
+// Google acepta un solo dominio en `hd`, y `hd` traba la elección de cuenta en ese dominio: se
+// envía solo con exactamente un dominio y la lista de emails vacía. Durante la transición, los
+// testers con Gmail de la lista tienen que poder elegir su cuenta.
 export function hostedDomain(list: AccessList): string | undefined {
-  return list.domains.length === 1 ? list.domains[0] : undefined;
+  return list.domains.length === 1 && list.emails.length === 0 ? list.domains[0] : undefined;
 }
