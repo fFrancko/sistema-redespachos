@@ -38,6 +38,7 @@ Se compara contra el criterio de aceptación de la **arquitectura v3 §4**, no s
 **No existe todavía**
 
 - Proyectos Firebase reales confirmados, secrets de GCP, target de Hosting mapeado.
+  - (Resuelto en parte, 8/10/2026, CR-10) El proyecto dev `qx-redespachos-dev` existe, los secrets de GCP están cargados y `deploy.yml` despliega Functions en cada merge a `main` (ver `docs/CI.md`). Siguen pendientes el proyecto de prod y el target de Hosting (MVP-32).
 - `firestore.indexes.json` (referenciado por `firebase.json`), `storage.rules`.
 - `.prettierrc`.
 - Mecanismo de registro de Functions y rutas web sin índice compartido (H-09).

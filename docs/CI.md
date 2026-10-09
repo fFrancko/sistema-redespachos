@@ -93,7 +93,70 @@ Secrets (nunca van en el repo):
 - `GCP_WORKLOAD_IDENTITY_PROVIDER`: `projects/<n>/locations/global/workloadIdentityPools/<pool>/providers/<provider>`.
 - `GCP_SERVICE_ACCOUNT_EMAIL`: service account con permisos de deploy de Functions en `qx-redespachos-dev`.
 
-La variable se crea en Settings → Secrets and variables → Actions → Variables.
+La variable se crea en Settings → Secrets and variables → Actions → **Variables**. Los dos secrets van en la misma pantalla, pestaña **Secrets**, sección **Repository secrets**. Cargados como variables o como *Environment secrets*, el workflow no los ve (`secrets.X` vacío) y `Check deploy config` falla con "faltan secrets": pasó el 8/10/2026, en los intentos 2 a 5 del run de abajo.
+
+**Estado (9/10/2026):** `DEPLOY_ENABLED = true` y los dos secrets cargados. Primer deploy real: run [37676044027](https://github.com/fFrancko/sistema-redespachos/actions/runs/37676044027), intento 8 (8/10/2026), en verde con `Authenticate to Google Cloud` y `Deploy Functions` en `success`. Desde entonces **todo merge a `main` despliega Functions a dev**.
+
+### Infraestructura en Google Cloud (dev)
+
+Configurada a mano por Franco el 8/10/2026 en `qx-redespachos-dev` (número de proyecto `775726638194`), con su cuenta owner y Cloud Shell. Nada de esto vive en el repo: esta sección es el registro para auditarlo y para repetirlo en prod (Hito 1B).
+
+**Workload Identity Federation.** GitHub Actions entra a Google Cloud sin claves: presenta un token OIDC firmado por GitHub y Google lo cambia por credenciales de corta duración de una cuenta de servicio. Los valores de abajo son identificadores, no credenciales; la seguridad está en la condición del provider.
+
+| Recurso | Valor |
+| --- | --- |
+| Cuenta de servicio | `github-deploy@qx-redespachos-dev.iam.gserviceaccount.com` (valor de `GCP_SERVICE_ACCOUNT_EMAIL`) |
+| Pool | `github-pool` (global) |
+| Provider | `github-provider`, OIDC, emisor `https://token.actions.githubusercontent.com` |
+| Mapeo de atributos | `google.subject=assertion.sub`, `attribute.repository=assertion.repository`, `attribute.ref=assertion.ref` |
+| Condición del provider | `assertion.repository == 'fFrancko/sistema-redespachos'`: ningún otro repo puede usarlo |
+| Valor de `GCP_WORKLOAD_IDENTITY_PROVIDER` | `projects/775726638194/locations/global/workloadIdentityPools/github-pool/providers/github-provider` |
+| Quién puede usar la cuenta | `roles/iam.workloadIdentityUser` sobre la cuenta, para `principalSet://iam.googleapis.com/projects/775726638194/locations/global/workloadIdentityPools/github-pool/attribute.repository/fFrancko/sistema-redespachos` |
+
+La condición limita por repositorio, no por rama: cualquier workflow de este repo puede autenticarse. Hoy solo `deploy.yml` pide el token (`id-token: write`) y corre solo en `main`. Limitar por `attribute.ref` queda para cuando exista el preview por PR (MVP-32), que necesita autenticarse desde ramas.
+
+**Roles de `github-deploy`** (a nivel proyecto):
+
+| Rol | Para qué |
+| --- | --- |
+| `roles/cloudfunctions.admin` | Crear y actualizar Functions |
+| `roles/run.admin` | Functions 2ª gen corre sobre Cloud Run |
+| `roles/cloudbuild.builds.editor` | El deploy compila el código en Cloud Build |
+| `roles/artifactregistry.writer` | Cloud Build publica la imagen en Artifact Registry |
+| `roles/iam.serviceAccountUser` | Desplegar funciones que corren como la cuenta de servicio por defecto |
+| `roles/serviceusage.serviceUsageConsumer` | La CLI de Firebase consulta qué APIs están activas |
+| `roles/firebasehosting.admin` | Para MVP-32 (preview de Hosting); hoy no se usa |
+| `roles/firebaseextensions.viewer` | La CLI lista las extensiones del proyecto en cada deploy de Functions |
+| `roles/firebase.viewer` | Lectura del proyecto Firebase; sugerido, **confirmar que se asignó** (ver PREGUNTAS de CR-10) |
+
+La cuenta **no** puede activar APIs, y es intencional: si un deploy pide una API nueva, falla con "Permissions denied enabling `<api>`" y la activa un owner a mano.
+
+**APIs activadas a mano** (además de las que ya traía el proyecto de Firebase): `iam`, `iamcredentials`, `sts`, `serviceusage`, `cloudfunctions`, `cloudbuild`, `artifactregistry`, `run`, `firebaseextensions`, `eventarc`, `pubsub`, `storage`, `cloudbilling` y `orgpolicy` (esta última solo para listar políticas de la organización). Todas `<nombre>.googleapis.com`. La CLI de Firebase pide `firebaseextensions` y `eventarc` en todo deploy de Functions 2ª gen, aunque no se usen extensiones ni triggers.
+
+Pendientes conocidos: Cloud Tasks (`cloudtasks`) y, si hay funciones programadas, Cloud Scheduler (`cloudscheduler`), con sus roles para `github-deploy`, cuando llegue MVP-22. Hay que activarlos antes del merge del ticket que los use, o ese deploy falla.
+
+**Verificar el estado** (Cloud Shell, solo lectura):
+
+```bash
+gcloud config set project qx-redespachos-dev
+gcloud projects get-iam-policy qx-redespachos-dev \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:serviceAccount:github-deploy@qx-redespachos-dev.iam.gserviceaccount.com" \
+  --format="table(bindings.role)"
+gcloud iam workload-identity-pools providers describe github-provider \
+  --location=global --workload-identity-pool=github-pool \
+  --format="value(name,state,attributeCondition)"
+gcloud services list --enabled --format="value(config.name)"
+```
+
+**Prueba de humo del deploy:** la callable `helloWorld` (`southamerica-east1`) responde por HTTP. El 8/10/2026 devolvió `{"result":{"message":"Hello from Firebase Cloud Functions","estados_pedido":[…12 estados…]}}`:
+
+```bash
+curl -s -X POST -H "Content-Type: application/json" -d '{"data":{}}' \
+  https://helloworld-cz4442kjva-rj.a.run.app
+```
+
+**Facturación:** el proyecto está en Blaze sobre la cuenta de facturación asignada por Franco (confirmado el 9/10/2026). La alerta de presupuesto (criterio de MVP-02) sigue pendiente.
 
 ### Empaquetado de `apps/functions`
 
@@ -124,4 +187,5 @@ Firestore: `firestore.rules` es *deny-all* hasta MVP-07; `deploy.yml` no desplie
 ## Fuera de alcance (deuda)
 
 - **Preview de Hosting por PR:** se quitó de MVP-03 y queda para un ticket aparte. Requiere los mismos secrets y el target de Hosting de arriba.
-- **Deploy a prod por tag:** ticket aparte.
+- **Deploy a prod por tag:** ticket aparte. Requiere repetir en el proyecto de prod la sección "Infraestructura en Google Cloud (dev)".
+- **`firebase-functions` 5.1.1:** la CLI avisa en cada deploy que está desactualizada. Subirla es una major: `CR: deps` aparte, con prueba de deploy real.

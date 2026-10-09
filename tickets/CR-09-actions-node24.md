@@ -69,13 +69,14 @@ Todo lo demás. En particular `pnpm-lock.yaml`, `.github/dependabot.yml`, la ló
 4. `git diff --stat origin/main...HEAD`: solo archivos permitidos.
 5. **Pendiente de Franco, después del push (el agente no pushea):**
    - El run de `CI` de la PR termina en verde, en `ubuntu-24.04`, sin anotaciones de Node 20 deprecado ni "Multiple versions of pnpm", y el comentario de cobertura aparece en la PR (prueba `sticky-pull-request-comment@v3.0.5`) y se sube el artefacto `coverage-report` (prueba `upload-artifact@v6`).
-   - Después del merge, el run de `Deploy to Dev` en `main` queda en verde con el resumen "Deploy a dev desactivado" (`DEPLOY_ENABLED` sigue sin `true`). `google-github-actions/auth@v3` no se ejercita hasta que haya secrets: queda anotado como riesgo.
+   - Después del merge, el run de `Deploy to Dev` en `main` queda en verde **desplegando de verdad**: `Authenticate to Google Cloud` (`google-github-actions/auth@v3`) y `Deploy Functions` en `success`, no `skipped`. Después, `helloWorld` sigue respondiendo a la prueba de humo de `docs/CI.md`. Es la primera prueba real de `auth@v3`.
+   - _Actualizado el 9/10/2026 (CR-10): el criterio original pedía el resumen "Deploy a dev desactivado" porque `DEPLOY_ENABLED` no estaba en `true`. Desde el 8/10 lo está, y todo merge a `main` despliega._
    - Franco pega en la nota los links de los dos runs.
 
 ## Fuera de alcance
 
 - **Migrar a `ubuntu-26.04`:** `CR` aparte, antes de que GitHub retire la imagen 24.04. Paso previo: un run de prueba con `runs-on: ubuntu-26.04` (emuladores de Firebase incluidos: necesitan Java, que en 26.04 sigue siendo 17).
-- Secrets de Workload Identity Federation y `DEPLOY_ENABLED`: los gestiona Franco (punto 1 pendiente de MVP-31).
+- Secrets de Workload Identity Federation y `DEPLOY_ENABLED`: los gestiona Franco. _Hechos el 8/10/2026 (ver CR-10)._
 - Fijar actions por SHA, subir Node 22 del proyecto, subir pnpm a 10: sin ticket.
 - Cerrar las PRs de Dependabot que proponen estas mismas majors: Franco, después del merge.
 
@@ -185,12 +186,13 @@ Worktree `../sistema-redespachos-cr09`, rama `cr-09-actions-node24` desde `origi
   - Node v26.10.0 en local, contra 22.x en CI. El ticket no cambia código ni Node, así que la diferencia no afecta la verificación. El run de la PR corre en 22.x.
   - `setup-node@v6` con `cache: pnpm` explícito sigue igual: desde v5, el caché automático por `packageManager` es solo para npm, y acá el input `cache` se pasa explícito.
 - **Fuera de alcance:**
-  - `docs/FIREBASE.md` l.49 quedó desactualizada después de MVP-31: dice que el deploy "hoy se omite por falta de secrets" y que `apps/functions` "todavía no es desplegable". Sin ticket por ahora.
+  - `docs/FIREBASE.md` l.49 quedó desactualizada después de MVP-31: dice que el deploy "hoy se omite por falta de secrets" y que `apps/functions` "todavía no es desplegable". _Se actualiza en CR-10._
   - Migrar a `ubuntu-26.04`: `CR` aparte, con un run de prueba previo (ver "Fuera de alcance" del ticket).
   - Cerrar las PRs de Dependabot de estas majors: Franco, después del merge.
   - Fijar actions por SHA, subir Node 22 del proyecto, subir pnpm a 10: sin ticket.
 - **Riesgos y deuda:**
   - `google-github-actions/auth@v3` no se ejercita hasta que haya secrets y `DEPLOY_ENABLED=true`. Los inputs son los mismos, pero el primer deploy real es la primera prueba.
+    - _Actualización del 9/10/2026 (CR-10): los secrets y `DEPLOY_ENABLED=true` ya están, y `auth@v2` desplegó en `main` (run 37676044027). El merge de esta PR es la primera prueba real de `auth@v3` (criterio 5)._
   - Los emuladores no se probaron en local (falta Java). `upload-artifact@v6` y `sticky-pull-request-comment@v3.0.5` solo se prueban en el run de la PR (criterio 5).
   - `ubuntu-24.04` fijo pasa a ser deuda cuando GitHub anuncie el retiro de esa imagen: el `CR` de 26.04 tiene que entrar antes.
   - El aviso `failed to delete '.git/worktrees/sistema-redespachos-mvp15|mvp31|mvp31-apoyo': Permission denied` aparece en cada `git worktree add` y `commit`: hay metadatos de worktrees viejos que git no puede limpiar, probablemente por un archivo abierto o por permisos. No afecta este ticket; se limpia con `git worktree prune` cuando esas carpetas no estén en uso.
