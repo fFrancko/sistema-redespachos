@@ -46,13 +46,13 @@ Las colecciones de la Fase 1 son las 19 de `docs/arquitectura-v3.md` §2.1. La l
 
 `.firebaserc` declara `dev` = **`qx-redespachos-dev`** (proyecto real "Sistema Expresos", creado el 5/10/2026) y `prod` = `proyecto-qx-prod`, que **todavía es un nombre provisorio**: el proyecto de prod se crea en el Hito 1B.
 
-- El deploy de Functions a dev lo hace `deploy.yml` (ver `docs/CI.md`), solo si la variable de repositorio `DEPLOY_ENABLED` vale `true`; Hosting todavía no se despliega (falta mapear el target `web`). Para correr Functions en el emulador, ver "Functions en local" en `docs/CI.md`.
-- **No despliegues reglas de Firestore ni de Storage a ningún proyecto real, ni a mano.** Las reglas actuales son provisorias (ver abajo). Las reglas por rol y sucursal llegan con MVP-07, con tests en el emulador.
+- El deploy de Functions a dev lo hace `deploy.yml` (ver `docs/CI.md`), solo si la variable de repositorio `DEPLOY_ENABLED` vale `true`. **Desde el 8/10/2026 está activado**: todo merge a `main` despliega Functions a `qx-redespachos-dev`. La cuenta de servicio, Workload Identity Federation, los roles y las APIs están en `docs/CI.md`, "Infraestructura en Google Cloud (dev)". Hosting todavía no se despliega (falta mapear el target `web`, MVP-32). Para correr Functions en el emulador, ver "Functions en local" en `docs/CI.md`.
+- **No despliegues reglas de Firestore ni de Storage a ningún proyecto real, ni a mano.** Las reglas actuales son un *deny-all* transitorio (ver abajo). Las reglas por rol y sucursal llegan con MVP-07, con tests en el emulador.
 - Deploy a prod: no existe todavía; va por tag y en un ticket propio.
 
 ## Firestore Security Rules
 
-**Estado actual (provisorio, solo para el emulador):** `allow read, write: if request.auth != null` sobre todas las colecciones. Es **incompatible con producción**: cualquier cuenta autenticada puede leer y escribir todo, y contradice la regla 4 de `AGENTS.md` (el cliente nunca escribe colecciones de negocio). Hay un `CR` propuesto para dejarlas en *deny-all* hasta MVP-07 (H-04).
+**Estado actual:** *deny-all* (`allow read, write: if false` sobre todas las colecciones), resuelto H-04. Las escrituras de negocio pasan por callables con el Admin SDK, que ignora las reglas. Aun así, **no se despliegan** a ningún proyecto real hasta MVP-07: `deploy.yml` despliega solo Functions.
 
 **MVP-07 (carril B):** reglas por rol (`ADMIN`, `ATENCION_PROVEEDOR`, `ANALISTA`, `BACKOFFICE`, `ADMINISTRACION`) y por sucursal, `storage.rules` y `firestore.indexes.json` (hoy `firebase.json` lo referencia pero no existe).
 
