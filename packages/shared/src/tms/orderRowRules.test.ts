@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'csv-parse/sync';
 import { describe, expect, it } from 'vitest';
-import { normalizeHeader } from './headers.js';
+import { TMS_ALL_COLUMNS, normalizeHeader } from './headers.js';
 import { parseTmsRow } from './orderRow.js';
 import type { TmsRawRow, TmsRowContext } from './orderRow.js';
 
@@ -205,5 +205,65 @@ describe('parseTmsRow: reglas puntuales', () => {
 
   it('ignora columnas desconocidas', () => {
     expect(errorKeys(setCells(base, { 'Columna Rara': 'x' }))).toEqual([]);
+  });
+});
+
+// Clave de `origen_tms` de la columna que se mapea al campo (no se escribe a mano: CR-07 renombra).
+function origenKeyOf(field: string): string {
+  const column = TMS_ALL_COLUMNS.find((candidate) => candidate.field === field);
+  if (column === undefined) throw new Error(`Sin columna para ${field}`);
+  return column.origenKey;
+}
+
+describe('parseTmsRow: origen_tms completo en las filas con error (D36)', () => {
+  it('Peso Kgs 0 queda crudo en origen_tms, con el error PESO_INVALIDO', () => {
+    const row = setCells(base, { 'Peso Kgs': '0' });
+    const result = parseTmsRow(row, context);
+    expect(errorKeys(row)).toEqual(['peso_kgs:PESO_INVALIDO']);
+    expect(result.datos.peso_kgs).toBeUndefined();
+    expect(result.datos.origen_tms?.[origenKeyOf('peso_kgs')]).toBe('0');
+  });
+
+  it('Cabecera Origen vacía queda en origen_tms con su clave y ""', () => {
+    const row = setCells(base, { 'Cabecera Origen': '   ' });
+    expect(errorKeys(row)).toEqual(['cabecera_origen:CAMPO_OBLIGATORIO']);
+    const origen = parseTmsRow(row, context).datos.origen_tms ?? {};
+    expect(Object.keys(origen)).toContain(origenKeyOf('cabecera_origen'));
+    expect(origen[origenKeyOf('cabecera_origen')]).toBe('');
+  });
+
+  it('Codigo de Expreso está en origen_tms de una fila con error (D26)', () => {
+    const row = setCells(base, { 'Codigo de Expreso': ' EXPRESO X ', 'Peso Kgs': '0' });
+    const result = parseTmsRow(row, context);
+    expect(result.datos.expreso_manual).toBe('EXPRESO X');
+    expect(result.datos.origen_tms?.[origenKeyOf('expreso_manual')]).toBe('EXPRESO X');
+  });
+
+  it('los valores quedan recortados y sin convertir (montos, fechas y CP tal como vinieron)', () => {
+    const row = setCells(base, {
+      'Peso Kgs': '0',
+      'Valor Declarado': ' 1,234.50 ',
+      'Fecha de Interfaz': '30/09/2026',
+      'Código Postal': '14',
+    });
+    const origen = parseTmsRow(row, context).datos.origen_tms ?? {};
+    expect(origen[origenKeyOf('valor_declarado')]).toBe('1,234.50');
+    expect(origen[origenKeyOf('fecha_interfaz')]).toBe('30/09/2026');
+    expect(origen[origenKeyOf('codigo_postal')]).toBe('14');
+  });
+
+  it('un error en una columna no mapeada también completa origen_tms', () => {
+    const row = setCells(base, { 'Fecha Status': '31/04/2026 10:00:00' });
+    const result = parseTmsRow(row, context);
+    expect(result.errores.map((error) => error.codigo)).toEqual(['FORMATO_INVALIDO']);
+    expect(result.datos.origen_tms?.[origenKeyOf('nro_pedido')]).toBe('SINT-0001');
+  });
+
+  it('una columna mapeada que la fila no trae no se agrega', () => {
+    const row = setCells(base, { 'Peso Kgs': '0', alto_cm: undefined });
+    const keys = Object.keys(parseTmsRow(row, context).datos.origen_tms ?? {});
+    expect(keys).not.toContain(origenKeyOf('alto_cm'));
+    expect(keys).toContain(origenKeyOf('ancho_cm'));
+    expect(keys).toHaveLength(TMS_ALL_COLUMNS.length - 1);
   });
 });
