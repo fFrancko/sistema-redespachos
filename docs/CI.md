@@ -182,7 +182,7 @@ En local, `dist/` no tiene `node_modules`: las dependencias se resuelven subiend
 
 Se dispara en `pull_request` (`opened`, `synchronize`, `reopened`). Un solo job, con permisos `contents: read`, `id-token: write` y `pull-requests: write`, y `concurrency` por número de PR con `cancel-in-progress` (un push nuevo cancela el preview en curso). Pasos: `Check preview config` → install → `Build shared` → build de `apps/web` → autenticación a Google Cloud (la misma Workload Identity Federation de `deploy.yml`) → `firebase hosting:channel:deploy pr-<número> --project qx-redespachos-dev --expires 7d --json` → comentario en la PR.
 
-Cada PR tiene su canal `pr-<número>` en el sitio de Hosting por defecto de `qx-redespachos-dev`; vence a los 7 días y el vencimiento se renueva con cada push. La URL sale del `--json` (`result.<sitio>.url`, con `jq`) y se publica en un comentario fijo de la PR (header `firebase-preview`, que se actualiza en cada push) y en el resumen del run. El sitio sale de `firebase.json` > `hosting`: `public: apps/web/dist` y rewrite de SPA a `/index.html`. Ese bloque no lleva `target`: es un único sitio, el por defecto del proyecto, y `.firebaserc` no mapea targets.
+Cada PR tiene su canal `pr-<número>` en el sitio de Hosting por defecto de `qx-redespachos-dev`; vence a los 7 días y el vencimiento se renueva con cada push. La URL sale del `--json` (`result.<sitio>.url`, con `jq`) y se publica en un comentario fijo de la PR (header `firebase-preview`, que se actualiza en cada push) y en el resumen del run. El sitio sale de `firebase.json` > `hosting`: `public: apps/web/dist` y rewrite de SPA a `/index.html`. `hosting` es un **objeto** (no un array) y no lleva `site` ni `target`: con un objeto, la CLI (`firebase-tools` 13.35.1, `hostingConfig`) completa `site` con el sitio por defecto del proyecto que recibe con `--project`, y `.firebaserc` no mapea targets. Con un array de un elemento sin `site` ni `target`, la CLI falla antes de crear el canal ("resolving hosting target of a site with no site name or target name"). No se fija `site` a mano: ataría el config a dev y rompería prod. Si algún día hay más de un sitio, hay que volver a un array con `site` o `target` en cada elemento.
 
 ### Activación
 
@@ -220,7 +220,11 @@ La config web de Firebase no es secreta (queda dentro del JS que baja el navegad
 
 ### Login con Google en la URL del preview
 
-El login con Google **no funciona en la URL del preview** hasta que ese dominio esté autorizado. Cada preview channel tiene un dominio propio (`qx-redespachos-dev--pr-<n>-<hash>.web.app`) que cambia por PR. En Authentication → Configuración → Dominios autorizados hay que sumar los dominios necesarios; Firebase no acepta comodines. Sin eso, el popup de Google falla con `auth/unauthorized-domain`. Mientras no se autorice, el preview sirve para revisar el shell y la pantalla de login, no el ingreso.
+Cada preview channel tiene un dominio propio (`qx-redespachos-dev--pr-<n>-<hash>.web.app`) que cambia por PR, y el login con Google solo funciona en dominios autorizados de Authentication (Firebase no acepta comodines). Sin eso, el popup falla con `auth/unauthorized-domain`.
+
+`firebase hosting:channel:deploy` intenta agregar ese dominio por su cuenta: por defecto sincroniza los dominios autorizados de Authentication (agrega el del canal y limpia los de canales vencidos), salvo que se pase `--no-authorized-domains`. Si la cuenta no tiene permiso sobre Authentication, el deploy **no falla**: muestra el aviso "Unable to add channel domain to Firebase Auth" y el dominio queda sin autorizar. Ninguno de los roles de `github-deploy` (tabla de "Infraestructura en Google Cloud (dev)") es de Firebase Authentication, así que hoy es probable que salga ese aviso y haya que autorizar el dominio a mano en Authentication → Configuración → Dominios autorizados. Mientras no esté autorizado, el preview sirve para revisar el shell y la pantalla de login, no el ingreso.
+
+Decisión pendiente de Franco (el workflow no cambia hasta su OK): darle a `github-deploy` un rol que pueda editar la configuración de Authentication (que amplía sus permisos), o pasar `--no-authorized-domains` y autorizar a mano.
 
 ### Riesgo: cualquier rama se autentica como `github-deploy`
 
@@ -231,6 +235,7 @@ La condición del provider de Workload Identity limita por repositorio, no por r
 - No despliega Hosting en vivo ni a prod (ver "Fuera de alcance").
 - No corre los tests ni el lint: eso es `ci.yml`. El preview solo construye `shared` y `apps/web`.
 - No borra el canal al cerrar la PR; vence solo a los 7 días.
+- No actualiza el comentario fijo cuando un push posterior se omite (`DEPLOY_ENABLED` apagado, Dependabot, fork) o falla: el comentario sigue mostrando la URL y el commit del último deploy exitoso, y esa URL puede haber vencido. El estado del push actual está en el check del run (y en su resumen), no en el comentario.
 
 ### Requisitos en Google Cloud (a verificar por Franco)
 
