@@ -204,7 +204,8 @@ Se introdujeron 3 mutaciones deliberadas en el código para verificar que los te
 ## 9. Decisiones y temas para Franco
 
 1. **Variables de entorno en CI / Hosting (MVP-32):** Como las listas vacías implican "nadie entra", el pipeline de preview/deploy de Hosting deberá inyectar `VITE_ALLOWED_EMAILS` y/o `VITE_ALLOWED_DOMAINS` para que la app desplegada permita el acceso.
-2. **Prueba final con popup real de Google:** La prueba manual con el emulador de Auth validó el flujo y los custom parameters; queda probar el popup de producción cuando exista el dominio corporativo en Google Workspace.
+2. **Test faltante, va a MVP-06 (decisión de Franco, 13/10):** la rama de rechazo de `getRoleClaim` en `AuthProvider.tsx` (error al leer el token → pendiente) está bien implementada pero ningún test la cubre; solo se prueba el claim inválido (`SUPERADMIN`). MVP-06, al distinguir "error al leer el rol" de "sin rol", debe incluir un test que haga fallar `getRoleClaim` y verifique que el usuario nunca queda con rol.
+3. **Prueba final con popup real de Google:** La prueba manual con el emulador de Auth validó el flujo y los custom parameters; queda probar el popup de producción cuando exista el dominio corporativo en Google Workspace.
 
 ---
 
