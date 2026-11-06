@@ -115,13 +115,13 @@ apps/web build: Done
 
 ## 2. Criterio de aceptación
 
-| Requisito | Estado | Evidencia |
-| --- | --- | --- |
-| **Arquitectura §4 (literal):** "Un email externo al dominio no entra; uno interno sin rol ve la pantalla pendiente." | **Cumplido** | Probado en `apps/web/src/auth/AuthGate.test.tsx` (casos `un email externo cierra la sesión y ve el mensaje` y `un email interno sin claim rol ve la pantalla de acceso pendiente`). Probado manualmente por Franco con emulador el 9/10. |
-| **Agregado 1:** Tests de componente (Auth simulado): email externo → sesión cerrada y mensaje; email interno sin claim `rol` → pantalla pendiente; con claim `rol` → layout con la navegación de su rol. | **Cumplido** | `AuthGate.test.tsx` cubre cada caso, incluyendo una prueba parametrizada con los 5 roles (`ADMIN`, `ATENCION_PROVEEDOR`, `ANALISTA`, `BACKOFFICE`, `ADMINISTRACION`) y sus menús esperados. |
-| **Agregado 2:** El registro de features tiene exactamente las 12 carpetas de `AGENTS.md` §3, y un test falla si alguien agrega o quita una. | **Cumplido** | `apps/web/src/app/featureRegistry.test.ts` verifica los 12 IDs exactos y compara con `readdirSync` sobre `apps/web/src/features`. |
-| **Agregado 3:** Prueba manual con el emulador de Auth (`pnpm dev:emulator` + `pnpm dev`), documentada en la nota de entrega. | **Cumplido** | Documentada en detalle en la nota de entrega y validada satisfactoriamente por Franco el 9/10. |
-| **Agregado 4:** Secuencia de `AGENTS.md` §5.5 en verde, con la salida pegada. | **Cumplido** | La secuencia completa pasó en limpio (ver sección 1). |
+| Requisito                                                                                                                                                                                                | Estado       | Evidencia                                                                                                                                                                                                                                |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Arquitectura §4 (literal):** "Un email externo al dominio no entra; uno interno sin rol ve la pantalla pendiente."                                                                                     | **Cumplido** | Probado en `apps/web/src/auth/AuthGate.test.tsx` (casos `un email externo cierra la sesión y ve el mensaje` y `un email interno sin claim rol ve la pantalla de acceso pendiente`). Probado manualmente por Franco con emulador el 9/10. |
+| **Agregado 1:** Tests de componente (Auth simulado): email externo → sesión cerrada y mensaje; email interno sin claim `rol` → pantalla pendiente; con claim `rol` → layout con la navegación de su rol. | **Cumplido** | `AuthGate.test.tsx` cubre cada caso, incluyendo una prueba parametrizada con los 5 roles (`ADMIN`, `ATENCION_PROVEEDOR`, `ANALISTA`, `BACKOFFICE`, `ADMINISTRACION`) y sus menús esperados.                                              |
+| **Agregado 2:** El registro de features tiene exactamente las 12 carpetas de `AGENTS.md` §3, y un test falla si alguien agrega o quita una.                                                              | **Cumplido** | `apps/web/src/app/featureRegistry.test.ts` verifica los 12 IDs exactos y compara con `readdirSync` sobre `apps/web/src/features`.                                                                                                        |
+| **Agregado 3:** Prueba manual con el emulador de Auth (`pnpm dev:emulator` + `pnpm dev`), documentada en la nota de entrega.                                                                             | **Cumplido** | Documentada en detalle en la nota de entrega y validada satisfactoriamente por Franco el 9/10.                                                                                                                                           |
+| **Agregado 4:** Secuencia de `AGENTS.md` §5.5 en verde, con la salida pegada.                                                                                                                            | **Cumplido** | La secuencia completa pasó en limpio (ver sección 1).                                                                                                                                                                                    |
 
 ---
 
@@ -164,17 +164,17 @@ apps/web build: Done
 Se introdujeron 3 mutaciones deliberadas en el código para verificar que los tests fallaran ante regresiones:
 
 1. **Guarda `RequireRole` en `router.tsx`:**
-   - *Mutación:* Se cambió `return allowed.includes(rol) ? children : <Navigate to="/" replace />;` por `return children;`.
-   - *Resultado:* Fallaron 5 tests en `router.test.tsx` (`una URL directa a /usuarios con rol ANALISTA redirige al inicio`, `/canalizador`, `/tarifas`, `/cotizacion`, `/auditoria`).
-   - *Restauración:* Código revertido y tests en verde.
+   - _Mutación:_ Se cambió `return allowed.includes(rol) ? children : <Navigate to="/" replace />;` por `return children;`.
+   - _Resultado:_ Fallaron 5 tests en `router.test.tsx` (`una URL directa a /usuarios con rol ANALISTA redirige al inicio`, `/canalizador`, `/tarifas`, `/cotizacion`, `/auditoria`).
+   - _Restauración:_ Código revertido y tests en verde.
 2. **Chequeo de `emailVerified` en `accessList.ts`:**
-   - *Mutación:* Se eliminó la verificación `!candidate.emailVerified`.
-   - *Resultado:* Fallaron 2 tests (`accessList.test.ts` › "rechaza un email no verificado aunque esté en la lista o el dominio" y `AuthGate.test.tsx` › "un email de la lista sin verificar se rechaza").
-   - *Restauración:* Código revertido y tests en verde.
+   - _Mutación:_ Se eliminó la verificación `!candidate.emailVerified`.
+   - _Resultado:_ Fallaron 2 tests (`accessList.test.ts` › "rechaza un email no verificado aunque esté en la lista o el dominio" y `AuthGate.test.tsx` › "un email de la lista sin verificar se rechaza").
+   - _Restauración:_ Código revertido y tests en verde.
 3. **Chequeo de generación en `AuthProvider.tsx`:**
-   - *Mutación:* Se comentó `if (current !== generation) return;` en la resolución de `getRoleClaim()`.
-   - *Resultado:* Falló el test en `AuthProvider.test.tsx` ("signOut antes de que resuelva el claim termina en el login, nunca en el layout").
-   - *Restauración:* Código revertido y tests en verde.
+   - _Mutación:_ Se comentó `if (current !== generation) return;` en la resolución de `getRoleClaim()`.
+   - _Resultado:_ Falló el test en `AuthProvider.test.tsx` ("signOut antes de que resuelva el claim termina en el login, nunca en el layout").
+   - _Restauración:_ Código revertido y tests en verde.
 
 ---
 
@@ -193,11 +193,11 @@ Se introdujeron 3 mutaciones deliberadas en el código para verificar que los te
 
 ## 8. Hallazgos
 
-| # | Severidad | Dónde | Qué pasa | Evidencia | Sugerencia |
-| --- | --- | --- | --- | --- | --- |
-| - | - | - | Sin hallazgos bloqueantes, mayores ni menores. | - | - |
+| #   | Severidad | Dónde | Qué pasa                                       | Evidencia | Sugerencia |
+| --- | --------- | ----- | ---------------------------------------------- | --------- | ---------- |
+| -   | -         | -     | Sin hallazgos bloqueantes, mayores ni menores. | -         | -          |
 
-*(Las deudas conocidas indicadas en la asignación —ausencia del alias `@/`, `afterEach(cleanup)` repetido, lista de correos expuesta en bundle de cliente, botón de reintento en pantalla pendiente para MVP-06 y `firebase-debug.log` fuera del `.gitignore`— están documentadas y corresponden a tickets o CRs separados).*
+_(Las deudas conocidas indicadas en la asignación —ausencia del alias `@/`, `afterEach(cleanup)` repetido, lista de correos expuesta en bundle de cliente, botón de reintento en pantalla pendiente para MVP-06 y `firebase-debug.log` fuera del `.gitignore`— están documentadas y corresponden a tickets o CRs separados)._
 
 ---
 
