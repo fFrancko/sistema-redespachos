@@ -1,0 +1,181 @@
+name: Preview Hosting
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: preview-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    name: Preview de Hosting en qx-redespachos-dev
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # MVP-32: mismo interruptor que deploy.yml (MVP-31, P-05). Orden de las decisiones:
+      # 1. DEPLOY_ENABLED distinto de 'true': se omite, con resumen.
+      # 2. PR de Dependabot o de un fork: se omite, con resumen (GitHub no les pasa secrets).
+      #    Se detecta por el autor de la PR y por el repo de origen, nunca por "secrets vacíos".
+      # 3. Activado, de este repo y con algo sin cargar (secrets o VITE_*): el job falla.
+      - name: Check preview config
+        id: preview_config
+        env:
+          DEPLOY_ENABLED: ${{ vars.DEPLOY_ENABLED }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+        run: |
+          skip() {
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Preview de Hosting omitido"
+              echo ""
+              echo "$1"
+              echo "Este run no publica ningún preview channel en \`qx-redespachos-dev\`: los pasos de build, autenticación y deploy figuran como omitidos. Ver \`docs/CI.md\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=Preview omitido::$2"
+            exit 0
+          }
+          if [ "$DEPLOY_ENABLED" != "true" ]; then
+            skip "Preview desactivado: la variable de repositorio \`DEPLOY_ENABLED\` vale \`${DEPLOY_ENABLED:-(sin definir)}\`, no \`true\`." "DEPLOY_ENABLED no es 'true'; no se publica el preview."
+          fi
+          if [ "$PR_AUTHOR" = "dependabot[bot]" ]; then
+            skip "La PR es de Dependabot, y GitHub no le pasa secrets a sus workflows." "PR de Dependabot; no se publica el preview."
+          fi
+          if [ "$PR_HEAD_REPO" != "$REPO" ]; then
+            skip "La PR viene de un fork (\`${PR_HEAD_REPO}\`), y GitHub no le pasa secrets a los workflows de forks." "PR de un fork; no se publica el preview."
+          fi
+          missing=""
+          for name in GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            {
+              echo "## Preview de Hosting fallido: faltan secrets"
+              echo ""
+              echo "\`DEPLOY_ENABLED\` vale \`true\` pero faltan los secrets:${missing}."
+              echo "Cargalos en Settings > Secrets and variables > Actions > Secrets > Repository secrets, o desactivá \`DEPLOY_ENABLED\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=Faltan secrets del preview::DEPLOY_ENABLED es 'true' pero faltan:${missing}. Cargalos o desactivá DEPLOY_ENABLED."
+            exit 1
+          fi
+          missing=""
+          for name in VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN VITE_FIREBASE_PROJECT_ID VITE_FIREBASE_STORAGE_BUCKET VITE_FIREBASE_MESSAGING_SENDER_ID VITE_FIREBASE_APP_ID; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            {
+              echo "## Preview de Hosting fallido: faltan variables de la app web"
+              echo ""
+              echo "\`DEPLOY_ENABLED\` vale \`true\` pero faltan las variables de repositorio:${missing}."
+              echo "Cargalas en Settings > Secrets and variables > Actions > Variables (de dónde sacarlas: \`docs/CI.md\`)."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=Faltan variables VITE_ del preview::DEPLOY_ENABLED es 'true' pero faltan:${missing}. Cargalas como variables de repositorio."
+            exit 1
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      - name: Setup pnpm
+        if: steps.preview_config.outputs.enabled == 'true'
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js 22.x
+        if: steps.preview_config.outputs.enabled == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.x
+          cache: pnpm
+
+      - name: Install
+        if: steps.preview_config.outputs.enabled == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared
+        if: steps.preview_config.outputs.enabled == 'true'
+        run: pnpm --filter @sistema-redespachos/shared build
+
+      # Las VITE_* salen de variables del repositorio, no del código. Las dos VITE_ALLOWED_* son
+      # opcionales (lista de acceso de MVP-05): vacías, nadie pasa el login. Quedan dentro del
+      # bundle público; ver docs/CI.md.
+      - name: Build web
+        if: steps.preview_config.outputs.enabled == 'true'
+        run: pnpm --filter @sistema-redespachos/web build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+          VITE_ALLOWED_EMAILS: ${{ vars.VITE_ALLOWED_EMAILS }}
+          VITE_ALLOWED_DOMAINS: ${{ vars.VITE_ALLOWED_DOMAINS }}
+
+      - name: Authenticate to Google Cloud
+        if: steps.preview_config.outputs.enabled == 'true'
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      # Un canal por PR (`pr-<número>`), con vencimiento de 7 días que se renueva en cada push.
+      # `--json` imprime en stdout un único objeto:
+      #   {"status":"success","result":{"<sitio>":{"site":"…","url":"https://…web.app","expireTime":"…"}}}
+      # La URL se toma con jq de `result.<sitio>.url`; si falta, el paso falla.
+      - name: Deploy preview channel
+        id: preview_deploy
+        if: steps.preview_config.outputs.enabled == 'true'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -o pipefail
+          if ! pnpm exec firebase hosting:channel:deploy "pr-${PR_NUMBER}" \
+            --project qx-redespachos-dev --expires 7d --json --non-interactive > preview.json; then
+            cat preview.json || true
+            echo "::error title=Falló el deploy del preview::firebase hosting:channel:deploy terminó con error; ver el log del paso."
+            exit 1
+          fi
+          cat preview.json
+          url="$(jq -r '[.result[]? | .url][0] // empty' preview.json)"
+          expire="$(jq -r '[.result[]? | .expireTime][0] // empty' preview.json)"
+          if [ -z "$url" ]; then
+            echo "::error title=Sin URL de preview::La salida de --json no trae result.<sitio>.url."
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          {
+            echo "#### Preview de Hosting"
+            echo ""
+            echo "URL: $url"
+            echo ""
+            echo "Commit \`${HEAD_SHA:0:7}\`. Vence: ${expire:-(sin dato)}. El canal \`pr-${PR_NUMBER}\` se renueva con cada push a la PR."
+          } > preview-comment.md
+          {
+            echo "## Preview de Hosting publicado"
+            echo ""
+            echo "$url"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post preview comment
+        if: steps.preview_deploy.outcome == 'success'
+        uses: marocchino/sticky-pull-request-comment@v3.0.5
+        with:
+          header: firebase-preview
+          path: preview-comment.md

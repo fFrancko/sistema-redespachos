@@ -92,7 +92,8 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
 
-      # Solo Functions (P-3): el target de Hosting `web` todavía no está mapeado en .firebaserc.
+      # Solo Functions (P-3). El Hosting en vivo no se despliega acá: queda fuera de MVP-32, que
+      # solo publica previews por PR (preview.yml).
       # El predeploy de firebase.json construye shared y functions y arma apps/functions/dist.
       - name: Deploy Functions
         if: steps.deploy_config.outputs.enabled == 'true'
