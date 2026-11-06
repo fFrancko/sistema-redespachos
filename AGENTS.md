@@ -69,6 +69,7 @@ El trabajo de un carril lo audita el agente del otro. Reglas para el auditor:
 - Trabajá en una conversación limpia y **leé el código y el ticket antes que la nota de entrega**.
 - **No modifiques el código del autor.** Dejá hallazgos con severidad y evidencia; el autor corrige.
 - Seguí `docs/auditoria-cruzada.md`, incluida la verificación de correcciones: una auditoría `RECHAZADO` no se cierra hasta que el auditor emite el veredicto final.
+- **Antes de commitear el informe de auditoría** (`tickets/*-AUDITORIA.md` o la sección que agregues), corré `pnpm format`. Un informe sin formatear rompe el paso `Format check` de CI en `main` y en todos los PR siguientes.
 
 ## 8. Cuando algo no cierra
 Parate y dejá escrito: qué esperabas, qué encontraste, qué opciones ves. No adaptes los datos ni la especificación para que algo pase. Si un fixture real contradice la arquitectura, eso es un hallazgo, no algo para corregir en silencio.

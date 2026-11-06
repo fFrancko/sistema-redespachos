@@ -14,7 +14,9 @@
 ## 1. Verificación del checklist general (11 puntos)
 
 ### 1. Verificación limpia
+
 Secuencia completa de `AGENTS.md` §5.5 ejecutada desde el worktree limpio sin artefactos previos (`dist/` vacíos).
+
 - **Entorno:** Windows 11, Node v26.10.0, pnpm 9.15.9 (CI usa Node 22.x; probado también en emulación de consumo Node).
 - `pnpm install --frozen-lockfile`: exit 0 en 16.3s.
 - `pnpm format`: exit 0 (todos los archivos con formato Prettier al día, sin cambios pendientes).
@@ -120,11 +122,13 @@ apps/web build: Done
 ```
 
 ### 2. Criterio de aceptación
+
 - **Criterio 1:** Cumplido. Los tests del punto 3 existen en `orderRow.test.ts`, `orderRowRules.test.ts` y `orders.test.ts`. Se verificó mediante mutaciones (ver Control D) que fallan si se vuelve al comportamiento previo.
 - **Criterio 2:** Cumplido. Ningún cambio en la salida de `parseTmsRow` para filas válidas. Se verificó con script independiente comparando fila por fila contra `origin/main` (ver Control B).
 - **Criterio 3:** Cumplido. Secuencia §5.5 en verde y prueba de consumo Node sobre `packages/shared/dist` ejecutada con éxito (ver Control A y Consumo Real).
 
 ### 3. Conformidad con la arquitectura
+
 - Cumple `docs/arquitectura-v3.md`:
   - **§2.4 (línea 234):** En los pedidos con error, `origen_tms` conserva además las columnas mapeadas con su valor crudo.
   - **D36 (línea 85):** `origen_tms` conserva las columnas del TMS tal como vinieron para la exportación de filas con error en el panel de revisión (MVP-19), mientras que en filas válidas guarda solo las columnas no mapeadas evitando duplicación.
@@ -132,9 +136,11 @@ apps/web build: Done
   - **D37 (línea 86):** El orden canónico proviene de `headers.ts` (`TMS_COLUMNS`).
 
 ### 4. Dinero
+
 - Regla 1 de `AGENTS.md` cumplida. Los valores que alimentan `origen_tms` son strings crudos recortados (`(value ?? '').trim()`), sin conversiones intermedias a `number` ni alteración de centavos.
 
 ### 5. Alcance
+
 - `git diff --stat origin/main...HEAD` muestra únicamente los 5 archivos permitidos en `packages/shared` y el ticket:
   ```text
   packages/shared/src/schemas/orders.test.ts    |  11 +++
@@ -149,15 +155,18 @@ apps/web build: Done
 - Ninguna dependencia añadida.
 
 ### 6. Contratos
+
 - Cambio habilitado bajo `CR: shared` expresamente aprobado por Franco el 5/10/2026.
 - `invalidOrderSchema` documenta y mantiene compatibilidad con `origen_tms` completo.
 - `orderSchema` no sufrió modificaciones. No hay tipos duplicados.
 
 ### 7. Seguridad y datos
+
 - Sin datos reales ni secretos. El fixture sintético se mantiene intacto.
 - No se imprimen valores de filas en errores ni logs (cumple Ley 25.326).
 
 ### 8. Casos borde
+
 - `Peso Kgs: 0` queda `'0'` en `origen_tms` con error `PESO_INVALIDO`.
 - `Cabecera Origen: '   '` queda `''` en `origen_tms` con error `CAMPO_OBLIGATORIO`.
 - `Codigo de Expreso: ' EXPRESO X '` queda `'EXPRESO X'` en `origen_tms` y `expreso_manual`.
@@ -165,15 +174,18 @@ apps/web build: Done
 - Columnas opcionales presentes (3 columnas de dimensiones al final): se preservan en `origen_tms` (total 50 columnas).
 
 ### 9. Tests
+
 - Tests con aserciones rigurosas de comportamiento.
 - Se verificó que fallan al mutar la implementación (ver Control D).
 - Tests existentes no sufrieron modificaciones ni eliminaciones (ver Control C).
 
 ### 10. Consumo real
+
 - Verificado ejecutando scripts ESM (`.mjs`) externos con Node puro importando directamente `./dist/index.js` emitido.
 - Se confirmó exportación y ejecución correcta de `parseTmsRow`, `buildFullOrigenTms`, `TMS_COLUMNS`, `TMS_ALL_COLUMNS` y `normalizeHeader`.
 
 ### 11. CI
+
 - El ticket no toca workflows ni configuración de CI. `ci:run` pasó localmente de forma limpia.
 
 ---
@@ -181,7 +193,9 @@ apps/web build: Done
 ## 2. Controles específicos de CR-02
 
 ### Control A: Reconstrucción independiente desde `origen_tms`
+
 Se ejecutó un script `.mjs` independiente ubicado fuera del repositorio (`scratch/control_a.mjs`) que importó `packages/shared/dist/index.js` mediante Node. Se tomaron del fixture sintético 3 filas representativas con errores de diferente naturaleza:
+
 1. `SINT-0008`: error de peso (`peso_kgs:PESO_INVALIDO`).
 2. `SINT-0004`: error de cabecera (`cabecera_origen:CAMPO_OBLIGATORIO`).
 3. `SINT-0019`: error de fecha en columna no mapeada (`fecha_de_alta:FORMATO_INVALIDO`).
@@ -212,10 +226,12 @@ Fila SINT-0019 (fecha en columna no mapeada):
 ```
 
 ### Control B: Filas válidas sin cambios respecto a `origin/main`
+
 Se ejecutó una comparación completa (`scratch/control_b.mjs`) sobre las 20 filas del fixture sintético contrastando la salida de `parseTmsRow` del branch contra la implementación canónica de `origin/main`:
+
 - En las **8 filas válidas**, el resultado completo (`datos`, `origen_tms`, `errores`, `observaciones`) es **100% idéntico** (deep equal).
 - En las **12 filas con error**, `errores`, `observaciones` y los campos de `datos` (salvo `origen_tms`) son idénticos; lo único que cambia es `origen_tms`, que incorpora las columnas mapeadas tal como exige D36.
-Salida real obtenida:
+  Salida real obtenida:
 
 ```text
 === CONTROL B: COMPARACION DE TODAS LAS FILAS CON ORIGIN/MAIN ===
@@ -225,11 +241,14 @@ Filas con error: 12 | Solo cambia origen_tms según D36: SI
 ```
 
 ### Control C: Tests existentes intactos
+
 Revisión del diff en `orderRow.test.ts` y `orderRowRules.test.ts`:
+
 - En `orderRow.test.ts`: la línea de imports fue actualizada para incluir los nuevos símbolos exportados, y se agregaron 2 nuevos bloques `describe` al final (líneas 252+). Los 35 tests preexistentes no sufrieron ninguna alteración.
 - En `orderRowRules.test.ts`: se agregaron imports al inicio y un bloque `describe` al final (líneas 211+). Los 20 tests preexistentes se mantuvieron intactos.
 
 ### Control D: Sensibilidad de tests ante rotura de reglas (Mutaciones)
+
 Se introdujeron 3 mutaciones deliberadas en `packages/shared/src/tms/orderRow.ts` y se verificó que los tests fallen:
 
 1. **Mutación 1: `parseTmsRow` no completa `origen_tms` en filas con error** (se comentó la llamada a `buildFullOrigenTms`).
@@ -242,6 +261,7 @@ Se introdujeron 3 mutaciones deliberadas en `packages/shared/src/tms/orderRow.ts
 Tras las pruebas, se restauró el archivo con `git checkout` y se verificó la suite limpia (63/63 tests pasando).
 
 ### Control E: Alcance estricto
+
 - Ningún archivo fuera de los autorizados fue tocado.
 - `headers.ts` y `pedidos_tms_sintetico.csv` se mantuvieron 100% inalterados.
 
@@ -249,9 +269,9 @@ Tras las pruebas, se restauró el archivo con `git checkout` y se verificó la s
 
 ## 3. Tabla de hallazgos
 
-| # | Severidad | Dónde | Qué pasa | Evidencia | Sugerencia |
-| - | --------- | ----- | -------- | --------- | ---------- |
-| - | Ninguna   | -     | Sin hallazgos bloqueantes, mayores ni menores | Verificación y controles 100% en verde | Proceder con el merge |
+| #   | Severidad | Dónde | Qué pasa                                      | Evidencia                              | Sugerencia            |
+| --- | --------- | ----- | --------------------------------------------- | -------------------------------------- | --------------------- |
+| -   | Ninguna   | -     | Sin hallazgos bloqueantes, mayores ni menores | Verificación y controles 100% en verde | Proceder con el merge |
 
 ---
 
